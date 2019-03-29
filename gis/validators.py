@@ -8,5 +8,10 @@ def ispositive(instance, attribute, value):
         raise LessThanZeroException("Value has to be bigger than 0")
 
 
-def is_in():
-    pass
+@attr.s
+class IsNumeric:
+
+    def __call__(self, instance, attribute, value):
+        current_type = type(value)
+        if current_type not in [int, float]:
+            raise TypeError(f"Value should be float or integer but is {current_type}")
