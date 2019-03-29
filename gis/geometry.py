@@ -6,10 +6,12 @@ from gis.exceptions import GeometryTypeError
 scriptDirectory = os.path.dirname(os.path.realpath(__file__))
 from gis.descriptors import NumberType
 import attr
-
+from gis.geometry_operations import count_delta
+from gis.validators import IsNumeric
 
 @attr.s
 class GeometryFrame(ABC):
+
     frame = attr.ib()
     geometry_column = attr.ib()
     crs = attr.ib(default=None)
@@ -18,6 +20,12 @@ class GeometryFrame(ABC):
         self.type = self.__class__.__name__
 
     def to_wkt(self):
+        """
+        Based on geometry column this method returns wkt representation of it, it does not modify
+        passed instance, it create new one
+
+        :return: GeometryFrame with new wkt column
+        """
         self.frame["wkt"] = self.frame["geometry"].apply(lambda x: x.wkt)
 
         return self.__class__(self.frame, "geometry")
@@ -32,9 +40,9 @@ class GeometryFrame(ABC):
     def union(self, attribute):
         print(self.frame.columns)
         dissolved = self.frame.dissolve(by=attribute, aggfunc='sum')
-        GeoFrame = self.__class__(dissolved, "geometry")
-        GeoFrame.type = "Multi" + self.type
-        return GeoFrame
+        geoframe = self.__class__(dissolved, "geometry")
+        geoframe.type = "Multi" + self.type
+        return geoframe
 
     def _assert_geom_type(self):
         unique_geometries = [el for el in set(self.frame.type) if el is not None]
@@ -54,37 +62,33 @@ class PointFrame(GeometryFrame):
 
 
 class LineFrame(GeometryFrame):
-    def __init__(self, frame, geometry_column):
+    def __init__(self, frame: gpd.GeoDataFrame, geometry_column: str):
         super().__init__(frame, geometry_column)
 
 
 class PolygonFrame(GeometryFrame):
-    def __init__(self, frame, geometry_column):
+    def __init__(self, frame: gpd.GeoDataFrame, geometry_column: str):
         super().__init__(frame, geometry_column)
 
 
 @attr.s
 class Point:
 
-    x = attr.ib(default=0)
-    y = attr.ib(default=0)
+    x = attr.ib(default=0, validator=[IsNumeric()])
+    y = attr.ib(default=0, validator=[IsNumeric()])
 
     def __str__(self):
         return f"Point({self.x} {self.y})"
 
-    def dx(self, cls):
-        if not hasattr(self, "__deltax"):
-            setattr(self, "__deltax", self.count_delta(cls.x, self.x))
-        return getattr(self, "__deltax")
 
-    def dy(self, cls):
-        if not hasattr(self, "__deltay"):
-            setattr(self, "__deltay", self.count_delta(cls.y, self.y))
-        return getattr(self, "__deltay")
+@attr.s
+class Line:
+    start = attr.ib()
+    end = attr.ib()
 
-    @staticmethod
-    def count_delta(val1, val2):
-        return val2 - val1
+    def __attr_post_init__(self):
+        self.dx = count_delta(self.start.x, self.start.x)
+        self.dy = count_delta(self.start.y, self.end.y)
 
 
 @attr.s
@@ -98,3 +102,5 @@ class Origin(Point):
 
 
 
+if __name__ == "__main__":
+    pointa = Point("s", 1.0)
