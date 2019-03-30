@@ -4,8 +4,8 @@ from gis.raster_components import Pixel
 from gis.geometry import Point
 from gis.raster_components import Extent
 from gis.raster_components import Raster
-from gis.raster_components import ImageStand
-from gis.raster_components import ImagePlot
+from gis.standarizer import ImageStand
+from gis.plotting import ImagePlot
 from gis.log_lib import logger
 from gis.raster_components import RasterData
 import numpy as np
