@@ -15,3 +15,7 @@ class IsNumeric:
         current_type = type(value)
         if current_type not in [int, float]:
             raise TypeError(f"Value should be float or integer but is {current_type}")
+
+@attr.s
+class IsPositiveNumeric(IsNumeric):
+    pass
