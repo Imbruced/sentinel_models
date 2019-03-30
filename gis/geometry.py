@@ -4,10 +4,10 @@ import os
 from gis.exceptions import GeometryCollectionError
 from gis.exceptions import GeometryTypeError
 scriptDirectory = os.path.dirname(os.path.realpath(__file__))
-from gis.descriptors import NumberType
 import attr
 from gis.geometry_operations import count_delta
 from gis.validators import IsNumeric
+
 
 @attr.s
 class GeometryFrame(ABC):
@@ -59,16 +59,19 @@ class PointFrame(GeometryFrame):
 
     def __init__(self, frame, geometry_column):
         super().__init__(frame, geometry_column)
+        super().__attr__post_init__()
 
 
 class LineFrame(GeometryFrame):
     def __init__(self, frame: gpd.GeoDataFrame, geometry_column: str):
         super().__init__(frame, geometry_column)
+        super().__attr__post_init__()
 
 
 class PolygonFrame(GeometryFrame):
     def __init__(self, frame: gpd.GeoDataFrame, geometry_column: str):
         super().__init__(frame, geometry_column)
+        super().__attr__post_init__()
 
 
 @attr.s
@@ -79,6 +82,15 @@ class Point:
 
     def __str__(self):
         return f"Point({self.x} {self.y})"
+
+    def translate(self, x, y):
+        """
+        Translates points coordinates by x and y value
+        :param x: number of units to move along x axis
+        :param y: number of units to move along y axis
+        :return: new Point with translated coordinates
+        """
+        return Point(self.x + x, self.y + y)
 
 
 @attr.s
@@ -101,6 +113,40 @@ class Origin(Point):
         super().__init__(self.x, self.y)
 
 
+@attr.s
+class Extent:
 
-if __name__ == "__main__":
-    pointa = Point("s", 1.0)
+    left_down = attr.ib(default=Point(0, 0))
+    right_up = attr.ib(default=Point(1, 1))
+    origin = attr.ib(init=False)
+    dx = attr.ib(init=False)
+    dy = attr.ib(init=False)
+
+    def __attrs_post_init__(self):
+        self.origin = Origin(self.left_down.x, self.left_down.y)
+        self.dx = count_delta(self.left_down.x, self.right_up.x)
+        self.dy = count_delta(self.left_down.y, self.right_up.y)
+
+    def scale(self, x, y, origin=Point(0, 0)):
+        """
+        This function takes x and y as the scaling values and divide extent dx and dy by them
+        If origin Point is not passed by default it is Point(0, 0)
+        :param x: Scaling value x
+        :param y: Scaling value y
+        :param origin: is the left down corner from which scaled extent will have origin
+        :return: returns New instance of extent
+        """
+        scaled_point = Point(int(self.dx/x + origin.x), int(self.dy/y + origin.y))
+        shrinked = Extent(origin, scaled_point)
+
+        return shrinked
+
+    def translate(self, x, y):
+        """
+        Translates extent coordinates
+        :param x:
+        :param y:
+        :return:
+        """
+
+        return Extent(self.left_down, self.right_up.translate(x, y))
