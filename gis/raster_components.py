@@ -13,6 +13,9 @@ import json
 from typing import List
 from gis.geometry import Extent
 from gis.meta import ConfigMeta
+from typing import Union
+from copy import copy
+
 
 
 @attr.s
@@ -99,9 +102,9 @@ class Raster:
         return raster
 
     @classmethod
-    def from_wkt(cls, wkt, extent, pixel):
+    def from_wkt(cls, geometry: str, extent, pixel):
         """
-        TODO simplify this method
+        TODO simplify this method, remove hardcoded crs
         :param wkt:
         :param extent:
         :param pixel:
@@ -111,13 +114,15 @@ class Raster:
         new_extent = extent.scale(pixel.x, pixel.y)
         raster = cls.__create_raster(new_extent.dx, new_extent.dy)
         transformed_raster = cls.__transform(raster, extent.origin, pixel)
-        polygon_within = cls.__insert_polygon(transformed_raster, wkt, 1)
+        polygon_within = cls.__insert_polygon(transformed_raster, geometry, 1)
 
         extent_new = Extent(Point(extent.origin.x, extent.origin.y),
                             Point((new_extent.origin.x + new_extent.dx) * pixel.x,
                                   (new_extent.origin.y + new_extent.dy) * pixel.y))
         array = polygon_within.ReadAsArray()
-        raster_ob = cls(extent_new, pixel, array.reshape(*array.shape, 1))
+        reshaped_array = array.reshape(*array.shape, 1)
+        ref = ReferencedArray(array=reshaped_array, crs="2180", extent=extent_new, shape=array.shape[:2])
+        raster_ob = cls(pixel=pixel, ref=ref)
 
         return raster_ob
 
@@ -140,7 +145,7 @@ class Raster:
         return raster_ob
 
     @classmethod
-    def from_geo(cls, geoframe: GeometryFrame, extent: Extent, pixel: Pixel):
+    def from_geo(cls, geometry: GeometryFrame, extent: Extent, pixel: Pixel):
 
         """
         TODO simplify this method and looka at extent new object
@@ -149,14 +154,12 @@ class Raster:
         :param pixel:
         :return:
         """
-        wkt_frame = geoframe.to_wkt()
+        wkt_frame = geometry.to_wkt()
         wkt_string = wkt_frame.frame["wkt"].values.tolist()[0]
 
         new_extent = extent.scale(pixel.x, pixel.y)
-        logger.info(new_extent)
         raster = cls.__create_raster(new_extent.dx, new_extent.dy)
         transformed_raster = cls.__transform(raster, extent.origin, pixel)
-        logger.info(wkt_string)
         polygon_within = cls.__insert_polygon(transformed_raster, wkt_string, 1)
 
         extent_new = Extent(Point(extent.origin.x, extent.origin.y),
@@ -175,16 +178,35 @@ class Raster:
         return raster_ob
 
     @classmethod
+    def with_adjustment(cls, method: str, existing_raster, geometry: Union[GeometryFrame, str]):
+        """
+        Function allows to use extsiting raster metadata such as pixel size and extent arguments
+        to adjust geometry into it
+        :param method: Currently supported methods from_wkt and from geo
+        :param existing_raster: it instance of class Raster
+        :param geometry: is a wkt or GeometryFrame instance which will be converted into raster
+        :return: new Raster with geometry adjusted into existing raster metadata
+        """
+
+        pixel = copy(existing_raster.pixel)
+        extent = existing_raster.ref.extent
+
+        return getattr(cls, method)(geometry, extent, pixel)
+
+    @classmethod
     def from_file(cls, path):
         raster_from_file = cls.load_image(path)
         left_top_corner_x, pixel_size_x, _, left_top_corner_y, _, pixel_size_y = raster_from_file.GetGeoTransform()
 
         pixel_number_x = raster_from_file.RasterXSize
         pixel_number_y = raster_from_file.RasterYSize
+        logger.info(pixel_number_x)
+        logger.info(pixel_number_y)
+
         pixel = Pixel(pixel_size_x, -pixel_size_y)
 
-        extent = Extent(Point(left_top_corner_x, left_top_corner_y - -pixel_number_y),
-                        Point(left_top_corner_x + pixel_number_x, left_top_corner_y))
+        extent = Extent(Point(left_top_corner_x, left_top_corner_y - -(pixel_number_y*pixel_size_y)),
+                        Point(left_top_corner_x + pixel_number_x*pixel_size_x, left_top_corner_y))
 
         array = cls.gdal_file_to_array(raster_from_file)
         band_number = cls.get_band_numbers_gdal(raster_from_file)
@@ -207,8 +229,6 @@ class Raster:
             yield ds.GetRasterBand(band+1).ReadAsArray()
 
 
-
-
 @attr.s
 class ArrayShape:
     shape = attr.ib()
@@ -219,6 +239,7 @@ class ArrayShape:
 
     def __ne__(self, other):
         return self.x_shape != other.x_shape or self.y_shape != other.y_shape
+
 
 
 class RasterData:
