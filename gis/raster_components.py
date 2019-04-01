@@ -80,7 +80,7 @@ class Raster:
     @staticmethod
     def __transform(raster, origin: Origin, pixel: Pixel):
         copy_raster = raster
-        copy_raster.SetGeoTransform((origin.x, pixel.x, 0.0, origin.y+(8838*10), 0, -pixel.y))
+        copy_raster.SetGeoTransform((origin.x, pixel.x, 0.0, origin.y+(raster.RasterYSize*pixel.y), 0, -pixel.y))
         left_top_corner_x, pixel_size_x, _, left_top_corner_y, _, pixel_size_y = copy_raster.GetGeoTransform()
         copy_raster.SetProjection('LOCAL_CS["arbitrary"]')
 
@@ -153,17 +153,20 @@ class Raster:
         wkt_string = wkt_frame.frame["wkt"].values.tolist()[0]
 
         new_extent = extent.scale(pixel.x, pixel.y)
+        logger.info(new_extent)
         raster = cls.__create_raster(new_extent.dx, new_extent.dy)
         transformed_raster = cls.__transform(raster, extent.origin, pixel)
-
+        logger.info(wkt_string)
         polygon_within = cls.__insert_polygon(transformed_raster, wkt_string, 1)
 
         extent_new = Extent(Point(extent.origin.x, extent.origin.y),
-                            Point((new_extent.origin.x + new_extent.dx) * pixel.x,
-                                  (new_extent.origin.y + new_extent.dy) * pixel.y))
+                            Point(int((new_extent.origin.x + new_extent.dx) * pixel.x),
+                                  int((new_extent.origin.y + new_extent.dy) * pixel.y)))
+
         logger.info(extent_new)
 
         array = polygon_within.ReadAsArray()
+        logger.info(f"Array shape {array.shape}")
 
         reshaped_array = array.reshape(*array.shape, 1)
         ref = ReferencedArray(array=reshaped_array, crs="2180", extent=extent_new, shape=array.shape[:2])
