@@ -77,7 +77,7 @@ class Raster:
 
     def save_gtiff(self, path, raster_dtype):
         """
-        TODO delete hardcoded values
+        TODO delete hardcoded values and use existing classes to simplify the code
         :param path:
         :param raster_dtype:
         :return:
@@ -226,10 +226,13 @@ class Raster:
         raster_from_file = cls.load_image(path)
         left_top_corner_x, pixel_size_x, _, left_top_corner_y, _, pixel_size_y = raster_from_file.GetGeoTransform()
 
-        pixel = Pixel(raster_from_file.RasterXSize, -raster_from_file.RasterYSize)
+        pixel_number_x = raster_from_file.RasterXSize
+        pixel_number_y = raster_from_file.RasterYSize
 
-        extent = Extent(Point(left_top_corner_x, left_top_corner_y - (raster_from_file.RasterYSize*pixel_size_y)),
-                        Point(left_top_corner_x + raster_from_file.RasterXSize*pixel_size_x, left_top_corner_y))
+        pixel = Pixel(pixel_size_x, -pixel_size_y)
+
+        extent = Extent(Point(left_top_corner_x, left_top_corner_y - -(pixel_number_y*pixel_size_y)),
+                        Point(left_top_corner_x + pixel_number_x*pixel_size_x, left_top_corner_y))
 
         array = cls.gdal_file_to_array(raster_from_file)
         band_number = cls.get_band_numbers_gdal(raster_from_file)
