@@ -85,6 +85,7 @@ class Raster:
         drv = gdal.GetDriverByName("GTiff")
         path = Path(path)
         if not path.is_file():
+            raise FileNotFoundError()
 
         if os.path.isfile(path):
             raise FileExistsError("File currently exists")
