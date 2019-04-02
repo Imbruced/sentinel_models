@@ -46,6 +46,25 @@ class ReferencedArray:
 
 
 @attr.s
+class Path:
+
+    path_string: str = attr.ib()
+
+    def __attrs_post_init__(self):
+        pass
+
+    def is_file(self):
+        return os.path.isfile(self.path_string)
+
+    def __exists(self, path):
+        pass
+
+    def create(cls, path):
+        if not os.path.exists(os.path.split(path)[0]):
+            os.makedirs(os.path.split(path)[0], exist_ok=True)
+
+
+@attr.s
 class Raster:
 
     pixel = attr.ib()
@@ -57,7 +76,16 @@ class Raster:
         self.extent = self.ref.extent
 
     def save_gtiff(self, path, raster_dtype):
+        """
+        TODO delete hardcoded values
+        :param path:
+        :param raster_dtype:
+        :return:
+        """
         drv = gdal.GetDriverByName("GTiff")
+        path = Path(path)
+        if not path.is_file():
+
         if os.path.isfile(path):
             raise FileExistsError("File currently exists")
 
@@ -169,7 +197,6 @@ class Raster:
         logger.info(extent_new)
 
         array = polygon_within.ReadAsArray()
-        logger.info(f"Array shape {array.shape}")
 
         reshaped_array = array.reshape(*array.shape, 1)
         ref = ReferencedArray(array=reshaped_array, crs="2180", extent=extent_new, shape=array.shape[:2])
@@ -198,15 +225,10 @@ class Raster:
         raster_from_file = cls.load_image(path)
         left_top_corner_x, pixel_size_x, _, left_top_corner_y, _, pixel_size_y = raster_from_file.GetGeoTransform()
 
-        pixel_number_x = raster_from_file.RasterXSize
-        pixel_number_y = raster_from_file.RasterYSize
-        logger.info(pixel_number_x)
-        logger.info(pixel_number_y)
+        pixel = Pixel(raster_from_file.RasterXSize, -raster_from_file.RasterYSize)
 
-        pixel = Pixel(pixel_size_x, -pixel_size_y)
-
-        extent = Extent(Point(left_top_corner_x, left_top_corner_y - -(pixel_number_y*pixel_size_y)),
-                        Point(left_top_corner_x + pixel_number_x*pixel_size_x, left_top_corner_y))
+        extent = Extent(Point(left_top_corner_x, left_top_corner_y - (raster_from_file.RasterYSize*pixel_size_y)),
+                        Point(left_top_corner_x + raster_from_file.RasterXSize*pixel_size_x, left_top_corner_y))
 
         array = cls.gdal_file_to_array(raster_from_file)
         band_number = cls.get_band_numbers_gdal(raster_from_file)
@@ -239,7 +261,6 @@ class ArrayShape:
 
     def __ne__(self, other):
         return self.x_shape != other.x_shape or self.y_shape != other.y_shape
-
 
 
 class RasterData:
