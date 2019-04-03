@@ -118,6 +118,7 @@ class Extent:
 
     left_down = attr.ib(default=Point(0, 0))
     right_up = attr.ib(default=Point(1, 1))
+    crs = attr.ib(default="local")
     origin = attr.ib(init=False)
     dx = attr.ib(init=False)
     dy = attr.ib(init=False)

@@ -13,6 +13,7 @@ import gdal
 from gis.raster_components import ReferencedArray
 from gis.log_lib import logger
 from gis.raster_components import Path
+from gis.exceptions import CrsException
 
 
 @attr.s
@@ -104,7 +105,16 @@ class Raster:
         """
         wkt_frame = geometry.to_wkt()
         wkt_strings = wkt_frame.frame["wkt"].values.tolist()
+
+        if not wkt_strings:
+            logger.warning("Provided an empty geodataframe, raster will be created from and extent only")
+            return cls.empty_raster(extent, pixel)
+
         transformed_raster, extent_new = cls.__gdal_raster_from_extent(extent, pixel)
+
+        if geometry.crs != extent.crs:
+            logger.error("incompatible crs between extent and geometry frame")
+            raise CrsException("Extent crs is not the same as geometryframe crs, please give the same ")
 
         for index, wkt_string in enumerate(wkt_strings):
             cls.__insert_polygon(transformed_raster, wkt_string, index)
