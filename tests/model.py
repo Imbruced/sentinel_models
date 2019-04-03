@@ -1,6 +1,6 @@
 import matplotlib
 from gis.geometry import PolygonFrame
-from gis.raster_components import Raster
+from gis.raster import Raster
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -10,7 +10,7 @@ matplotlib.use('Qt5Agg')
 if __name__ == "__main__":
     shape_path = "D:\\master_thesis\\data\\geometry\\domy.shp"
     polygon_frame = PolygonFrame.from_file(shape_path)
-    print([el.wkt for  el in polygon_frame.frame["geometry"].values.tolist()])
+    print([el.wkt for el in polygon_frame.frame["geometry"].values.tolist()])
     # polygon_frame = polygon_frame.union("id")
     main_image = Raster.from_file("D:\\master_thesis\\data\\buildings.tif")
     label_raster = Raster.with_adjustment("from_geo", main_image, polygon_frame)
@@ -24,7 +24,7 @@ if __name__ == "__main__":
     plt.show()
 
     raster_3 = Raster.empty_raster(main_image.extent, main_image.pixel)
-    
+
     plt.imshow(raster_3.array[:, :, 0])
     plt.show()
 
