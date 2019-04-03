@@ -32,9 +32,16 @@ class GeometryFrame(ABC):
 
     @classmethod
     def from_file(cls, path, driver="ESRI Shapefile"):
+        """
+        TODO properly handle crs from file
+        :param path:
+        :param driver:
+        :return:
+        """
+
         geometry = gpd.read_file(path, driver=driver)
         GeoFrame = cls(geometry, "geom")
-        GeoFrame.crs = geometry.crs
+        # GeoFrame.crs = geometry.crs["init"]
         return GeoFrame
 
     def union(self, attribute):
