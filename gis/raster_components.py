@@ -184,20 +184,20 @@ class Raster:
         :return:
         """
         wkt_frame = geometry.to_wkt()
-        wkt_string = wkt_frame.frame["wkt"].values.tolist()[0]
+        wkt_strings = wkt_frame.frame["wkt"].values.tolist()
 
         new_extent = extent.scale(pixel.x, pixel.y)
         raster = cls.__create_raster(new_extent.dx, new_extent.dy)
         transformed_raster = cls.__transform(raster, extent.origin, pixel)
-        polygon_within = cls.__insert_polygon(transformed_raster, wkt_string, 1)
+
+        for index, wkt_string in enumerate(wkt_strings):
+            cls.__insert_polygon(transformed_raster, wkt_string, index)
 
         extent_new = Extent(Point(extent.origin.x, extent.origin.y),
                             Point(int((new_extent.origin.x + new_extent.dx) * pixel.x),
                                   int((new_extent.origin.y + new_extent.dy) * pixel.y)))
 
-        logger.info(extent_new)
-
-        array = polygon_within.ReadAsArray()
+        array = transformed_raster.ReadAsArray()
 
         reshaped_array = array.reshape(*array.shape, 1)
         ref = ReferencedArray(array=reshaped_array, crs="2180", extent=extent_new, shape=array.shape[:2])
