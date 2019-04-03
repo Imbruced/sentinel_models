@@ -14,7 +14,7 @@ class GeometryFrame(ABC):
 
     frame = attr.ib()
     geometry_column = attr.ib()
-    crs = attr.ib(default=None)
+    crs = attr.ib(default="local")
 
     def __attr__post_init__(self):
         self.type = self.__class__.__name__
