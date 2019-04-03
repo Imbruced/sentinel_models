@@ -114,7 +114,7 @@ class Raster:
 
         if geometry.crs != extent.crs:
             logger.error("incompatible crs between extent and geometry frame")
-            raise CrsException("Extent crs is not the same as geometryframe crs, please give the same ")
+            raise CrsException("Extent crs is not the same as geometry frame crs, please give the same ")
 
         for index, wkt_string in enumerate(wkt_strings):
             cls.__insert_polygon(transformed_raster, wkt_string, index)
