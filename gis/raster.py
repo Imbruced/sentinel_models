@@ -113,7 +113,8 @@ class Raster:
         transformed_raster, extent_new = cls.__gdal_raster_from_extent(extent, pixel)
 
         if geometry.crs != extent.crs:
-            logger.error("incompatible crs between extent and geometry frame")
+            logger.error(f"incompatible crs between extent and geometry "
+                         f"frame geometry crs {geometry.crs} and extent crs: {extent.crs}")
             raise CrsException("Extent crs is not the same as geometry frame crs, please give the same ")
 
         for index, wkt_string in enumerate(wkt_strings):
