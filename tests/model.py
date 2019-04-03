@@ -23,6 +23,14 @@ if __name__ == "__main__":
     plt.imshow(raster_2.array[:, :, 0])
     plt.show()
 
+    raster_3 = Raster.empty_raster(main_image.extent, main_image.pixel)
+    
+    plt.imshow(raster_3.array[:, :, 0])
+    plt.show()
+
+
+
+
     # logger.info(label_raster.array.shape)
     # main_image = Raster.from_file("D:\\master_thesis\\data\\buildings.tif")
     # img_stand = ImageStand(main_image, 3)
