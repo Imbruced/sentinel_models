@@ -33,8 +33,19 @@ class A:
         return self.__prop
 
 
-a = A(10)
-b = A(20)
+class Aa:
 
-logging.info(a.prop)
-logging.info(b.prop)
+    def __init__(self):
+        self.a = 1
+
+    def example_function(self):
+        print("Nothing happened")
+
+    def method2(self):
+        print(self.__dict__)
+        getattr(self, "example_function")()
+
+
+s = Aa()
+
+s.method2()

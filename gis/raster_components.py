@@ -131,29 +131,54 @@ class Raster:
         return raster
 
     @classmethod
+    def __gdal_raster_from_extent(cls, extent, pixel):
+        """
+        This method based on extent instance and pixel value creating empty raster
+
+        :param extent: instance of Extent
+        :param pixel: instance of pixel
+        :return: gdal raster prepared based on specified extent
+        """
+
+        new_extent = extent.scale(pixel.x, pixel.y)
+
+        extent_new = Extent(Point(extent.origin.x, extent.origin.y),
+                            Point((new_extent.origin.x + new_extent.dx) * pixel.x,
+                                  (new_extent.origin.y + new_extent.dy) * pixel.y))
+
+        raster = cls.__create_raster(new_extent.dx, new_extent.dy)
+        transformed_raster = cls.__transform(raster, extent.origin, pixel)
+
+        return transformed_raster, extent_new
+
+    @classmethod
+    def empty_raster(cls, extent, pixel):
+        pass
+
+    @classmethod
+    def __convert_gdal_raster_raster_instance(cls, transformed_raster, extent, pixel):
+        array = transformed_raster.ReadAsArray()
+        reshaped_array = array.reshape(*array.shape, 1)
+        ref = ReferencedArray(array=reshaped_array, crs="2180", extent=extent, shape=array.shape[:2])
+        raster_ob = cls(pixel=pixel, ref=ref)
+
+        return raster_ob
+
+    @classmethod
     def from_wkt(cls, geometry: str, extent, pixel):
         """
         TODO simplify this method, remove hardcoded crs
+        TODO add crs validation, write class representing crsError
+        This method converts passed as string wkt into raster format to the extent
+        Remember to pass wkt in the same coordinate reference system as in extent
         :param wkt:
         :param extent:
         :param pixel:
         :return:
         """
-
-        new_extent = extent.scale(pixel.x, pixel.y)
-        raster = cls.__create_raster(new_extent.dx, new_extent.dy)
-        transformed_raster = cls.__transform(raster, extent.origin, pixel)
-        polygon_within = cls.__insert_polygon(transformed_raster, geometry, 1)
-
-        extent_new = Extent(Point(extent.origin.x, extent.origin.y),
-                            Point((new_extent.origin.x + new_extent.dx) * pixel.x,
-                                  (new_extent.origin.y + new_extent.dy) * pixel.y))
-        array = polygon_within.ReadAsArray()
-        reshaped_array = array.reshape(*array.shape, 1)
-        ref = ReferencedArray(array=reshaped_array, crs="2180", extent=extent_new, shape=array.shape[:2])
-        raster_ob = cls(pixel=pixel, ref=ref)
-
-        return raster_ob
+        transformed_raster, extent_new = cls.__gdal_raster_from_extent(extent, pixel)
+        transformed_raster = cls.__insert_polygon(transformed_raster, geometry, 1)
+        return cls.__convert_gdal_raster_raster_instance(transformed_raster, extent_new, pixel)
 
     @staticmethod
     def reshape_array(array):
@@ -173,6 +198,11 @@ class Raster:
         raster_ob = cls(pixel, array_copy)
         return raster_ob
 
+    @staticmethod
+    def insert_wkt_into_gdal_raster(wkt, raster):
+
+        pass
+
     @classmethod
     def from_geo(cls, geometry: GeometryFrame, extent: Extent, pixel: Pixel):
 
@@ -185,25 +215,12 @@ class Raster:
         """
         wkt_frame = geometry.to_wkt()
         wkt_strings = wkt_frame.frame["wkt"].values.tolist()
-
-        new_extent = extent.scale(pixel.x, pixel.y)
-        raster = cls.__create_raster(new_extent.dx, new_extent.dy)
-        transformed_raster = cls.__transform(raster, extent.origin, pixel)
+        transformed_raster, extent_new = cls.__gdal_raster_from_extent(extent, pixel)
 
         for index, wkt_string in enumerate(wkt_strings):
             cls.__insert_polygon(transformed_raster, wkt_string, index)
 
-        extent_new = Extent(Point(extent.origin.x, extent.origin.y),
-                            Point(int((new_extent.origin.x + new_extent.dx) * pixel.x),
-                                  int((new_extent.origin.y + new_extent.dy) * pixel.y)))
-
-        array = transformed_raster.ReadAsArray()
-
-        reshaped_array = array.reshape(*array.shape, 1)
-        ref = ReferencedArray(array=reshaped_array, crs="2180", extent=extent_new, shape=array.shape[:2])
-        raster_ob = cls(pixel=pixel, ref=ref)
-
-        return raster_ob
+        return cls.__convert_gdal_raster_raster_instance(transformed_raster, extent_new, pixel)
 
     @classmethod
     def with_adjustment(cls, method: str, existing_raster, geometry: Union[GeometryFrame, str]):
