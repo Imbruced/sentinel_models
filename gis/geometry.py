@@ -14,7 +14,7 @@ class GeometryFrame(ABC):
 
     frame = attr.ib()
     geometry_column = attr.ib()
-    crs = attr.ib(default="local")
+    crs = attr.ib(default="local", validator=[])
 
     def __attr__post_init__(self):
         self.type = self.__class__.__name__
@@ -41,7 +41,7 @@ class GeometryFrame(ABC):
 
         geometry = gpd.read_file(path, driver=driver)
         GeoFrame = cls(geometry, "geom")
-        # GeoFrame.crs = geometry.crs["init"]
+        GeoFrame.crs = geometry.crs["init"]
         return GeoFrame
 
     def union(self, attribute):
@@ -50,6 +50,12 @@ class GeometryFrame(ABC):
         geoframe = self.__class__(dissolved, "geometry")
         geoframe.type = "Multi" + self.type
         return geoframe
+
+    # def transform(self, to_epsg, from_epsg=None):
+    #     if self.crs is None or self.crs == "":
+    #         self.crs =
+
+
 
     def _assert_geom_type(self):
         unique_geometries = [el for el in set(self.frame.type) if el is not None]
@@ -134,6 +140,10 @@ class Extent:
         self.origin = Origin(self.left_down.x, self.left_down.y)
         self.dx = count_delta(self.left_down.x, self.right_up.x)
         self.dy = count_delta(self.left_down.y, self.right_up.y)
+
+    def transform(self, to_crs):
+
+        pass
 
     def scale(self, x, y, origin=Point(0, 0)):
         """

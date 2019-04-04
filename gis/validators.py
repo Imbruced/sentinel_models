@@ -1,7 +1,8 @@
 import attr
 from gis.exceptions import LessThanZeroException
 from gis.log_lib import logger
-
+from gis.exceptions import CrsException
+from gis.crs import CRS
 
 def ispositive(instance, attribute, value):
     if value <= 0:
@@ -19,3 +20,10 @@ class IsNumeric:
 @attr.s
 class IsPositiveNumeric(IsNumeric):
     pass
+
+
+class IsCrs:
+
+    def __call__(self, instance, attribute, value):
+        if value not in CRS:
+            raise CrsException("This is not valid coordinate reference system")
