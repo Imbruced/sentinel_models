@@ -22,3 +22,7 @@ if __name__ == "__main__":
 
 ```
 
+![alt text](https://github.com/Imbruced/sentinel_models/blob/master/tests/example_result.PNG)
+
+
+
