@@ -8,7 +8,8 @@ verify_ssl = true
 [packages]
 pandas = "==0.24.2"
 matplotlib="*"
-gdal = "==2.2.2"
+keras = "==2.2.4"
+attrs = "==17.2.0"
 
 [requires]
 python_version = "3.6"
