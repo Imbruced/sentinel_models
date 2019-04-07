@@ -1,4 +1,8 @@
 # Sentinel models
+This library was created to create input data for Neural Network based on
+Satellite images data. First use was on setninel2 satellite images but it 
+will also work for other data sources. Library is in beta version still,
+some of the functionality may not be available. 
 ## Requirements
 ## Use cases
 Example use 
