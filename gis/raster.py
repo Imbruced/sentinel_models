@@ -12,8 +12,13 @@ from copy import copy
 import gdal
 from gis.raster_components import ReferencedArray
 from gis.log_lib import logger
-from gis.raster_components import Path
 from gis.exceptions import CrsException
+from gis.raster_components import ArrayShape
+from typing import List
+from gis.exceptions import PixelSizeException
+import numpy as np
+from gis.raster_components import create_two_dim_chunk
+import scipy.misc
 
 
 @attr.s
@@ -27,7 +32,11 @@ class Raster:
         self.array = self.ref.array
         self.extent = self.ref.extent
 
-    def __save_gtiff(self, path, raster_dtype):
+    def save_png(self, path):
+
+        scipy.misc.imsave(path + 'outfile.jpg', self.array)
+
+    def save_gtiff(self, path, raster_dtype):
         """
         TODO delete hardcoded values and use existing classes to simplify the code
         This method is not production ready it needs to be simplified and properly
@@ -37,13 +46,13 @@ class Raster:
         :return:
         """
         drv = gdal.GetDriverByName("GTiff")
-        path = Path(path)
-        if not path.is_file():
-            raise FileNotFoundError()
-
-        if os.path.isfile(path):
-            raise FileExistsError("File currently exists")
-
+        # path = Path(path)
+        # if not path.is_file():
+        #     raise FileNotFoundError()
+        #
+        # if os.path.isfile(path):
+        #     raise FileExistsError("File currently exists")
+        logger.info(path)
         if not os.path.exists(os.path.split(path)[0]):
             os.makedirs(os.path.split(path)[0], exist_ok=True)
 
@@ -51,9 +60,10 @@ class Raster:
 
         ds = drv.Create(path, self.array.shape[1], self.array.shape[0], band_number, raster_dtype)
         transformed_ds = self.__transform(ds, self.extent.origin, self.pixel)
-        transformed_ds.SetProjection(WKT_32364)
+        # transformed_ds.SetProjection()
 
         for band in range(self.array.shape[2]):
+            logger.info("Writing an array")
             transformed_ds.GetRasterBand(band + 1).WriteArray(self.array[:, :, band])
 
     @classmethod
@@ -111,19 +121,20 @@ class Raster:
             return cls.empty_raster(extent, pixel)
 
         transformed_raster, extent_new = cls.__gdal_raster_from_extent(extent, pixel)
-
+        logger.info(f"Geometry CRS: {geometry.crs}")
+        logger.info(f"Extent CRS: {extent.crs}")
         if geometry.crs != extent.crs:
             logger.error(f"incompatible crs between extent and geometry "
                          f"frame geometry crs {geometry.crs} and extent crs: {extent.crs}")
             raise CrsException("Extent crs is not the same as geometry frame crs, please give the same ")
 
         for index, wkt_string in enumerate(wkt_strings):
-            cls.__insert_polygon(transformed_raster, wkt_string, index)
+            cls.__insert_polygon(transformed_raster, wkt_string, index+1)
 
         return cls.__convert_gdal_raster_raster_instance(transformed_raster, extent_new, pixel)
 
     @classmethod
-    def from_file(cls, path):
+    def from_file(cls, path, crs="local"):
 
         """
         TODO This method needs simplifying
@@ -139,15 +150,16 @@ class Raster:
         pixel = Pixel(pixel_size_x, -pixel_size_y)
 
         extent = Extent(Point(left_top_corner_x, left_top_corner_y - -(pixel_number_y * pixel_size_y)),
-                        Point(left_top_corner_x + pixel_number_x * pixel_size_x, left_top_corner_y))
+                        Point(left_top_corner_x + pixel_number_x * pixel_size_x, left_top_corner_y),
+                        crs=crs)
 
-        array = cls.gdal_file_to_array(raster_from_file)
+        array = cls.gdal_file_to_array(raster_from_file, False)
         band_number = cls.get_band_numbers_gdal(raster_from_file)
 
-        ref = ReferencedArray(array=array, crs="2180", extent=extent, band_number=band_number,
+        ref = ReferencedArray(array=array, crs=crs, extent=extent, band_number=band_number,
                               shape=[pixel_number_y, pixel_number_x])
 
-        return cls(pixel, ref)
+        return cls(pixel=pixel, ref=ref)
 
     @staticmethod
     def __create_raster(x_shape, y_shape):
@@ -221,8 +233,8 @@ class Raster:
     @classmethod
     def from_array(cls, array, pixel, extent=Extent(Point(0, 0), Point(0, 0))):
         array_copy = array
-
-        raster_ob = cls(pixel, array_copy)
+        ref = ReferencedArray(array=array_copy, crs=extent.crs, extent=extent, shape=array.shape[:2])
+        raster_ob = cls(pixel, ref)
         return raster_ob
 
     @staticmethod
@@ -235,6 +247,59 @@ class Raster:
         return gdal_image.RasterCount
 
     @staticmethod
-    def gdal_file_to_array(ds):
-        for band in range(ds.RasterCount):
-            yield ds.GetRasterBand(band + 1).ReadAsArray()
+    def gdal_file_to_array(ds, use_gen=False):
+        return ds.ReadAsArray().transpose([1, 2, 0])
+        # if use_gen:
+        #     for band in range(ds.RasterCount):
+        #         yield ds.GetRasterBand(band + 1).ReadAsArray()
+        # else:
+        #     return ds.ReadAsArray()
+
+
+@attr.s
+class RasterData:
+    """
+    This class allows to simply create data to unet model, convolutional neural network and ANN network.
+    Data is prepared based on two arrays, they have to have equal shape
+    TODO Add asserting methods
+    """
+
+    image = attr.ib()
+    label = attr.ib()
+
+    def __attrs_post_init__(self):
+        if self.image.pixel != self.label.pixel:
+            raise PixelSizeException("Label and array pixel has to be the same in size")
+
+    def prepare_unet_images(self, image_size: List[int], remove_empty_labels=True):
+        chunks_array = create_two_dim_chunk(self.image.array, image_size)
+        chunks_label = create_two_dim_chunk(self.label.array, image_size)
+
+        for img, lbl in zip(chunks_array, chunks_label):
+            if remove_empty_labels or np.unique(lbl).__len__() > 1:
+                yield [img, lbl]
+
+    def save_unet_images(self, image_size: List[int], out_put_path: str):
+        for index, (image, label) in enumerate(self.prepare_unet_images(image_size)):
+            logger.info(image.shape)
+            current_label_image = Raster.from_array(label, self.image.pixel)
+            current_image = Raster.from_array(image, self.label.pixel)
+            try:
+                current_label_image.save_gtiff(out_put_path + f"/label/label_{index}.tif", gdal.GDT_Byte)
+                current_image.save_gtiff(out_put_path + f"/image/image_{index}.tif", gdal.GDT_Int16)
+            except Exception as e:
+                logger.error(e)
+
+    def save_con_images(self):
+        pass
+
+    def save_ann_csv(self):
+        pass
+
+    def assert_equal_size(self, array1: np.ndarray, array2: np.ndarray):
+        shape_1 = ArrayShape(array1.shape)
+        shape_2 = ArrayShape(array2.shape)
+        try:
+            assert shape_1 == shape_2
+        except AssertionError:
+            raise ValueError("Arrays dont have the same size")
