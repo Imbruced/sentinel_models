@@ -26,9 +26,11 @@ class GeometryFrame(ABC):
 
         :return: GeometryFrame with new wkt column
         """
-        self.frame["wkt"] = self.frame["geometry"].apply(lambda x: x.wkt)
 
-        return self.__class__(self.frame, "geometry")
+        frame_copy = self.frame.copy()
+        frame_copy["wkt"] = frame_copy["geometry"].apply(lambda x: x.wkt)
+
+        return self.__class__(frame_copy, "geometry")
 
     @classmethod
     def from_file(cls, path, driver="ESRI Shapefile"):
@@ -45,10 +47,10 @@ class GeometryFrame(ABC):
         return GeoFrame
 
     def union(self, attribute):
-        print(self.frame.columns)
         dissolved = self.frame.dissolve(by=attribute, aggfunc='sum')
         geoframe = self.__class__(dissolved, "geometry")
         geoframe.type = "Multi" + self.type
+        geoframe.crs = self.crs
         return geoframe
 
     # def transform(self, to_epsg, from_epsg=None):
