@@ -1,6 +1,5 @@
 import attr
 from gis.exceptions import LessThanZeroException
-from gis.log_lib import logger
 from gis.exceptions import CrsException
 from gis.crs import CRS
 
