@@ -2,6 +2,19 @@ import attr
 from gis.exceptions import LessThanZeroException
 from gis.exceptions import CrsException
 from gis.crs import CRS
+import os
+from gis.exceptions import ExtensionException
+from gis.log_lib import logger
+
+
+image_file_extensions = [
+    "png",
+    "tif",
+    "tiff",
+    "geotiff",
+    "jpg",
+    "jpeg"
+]
 
 def ispositive(instance, attribute, value):
     if value <= 0:
@@ -26,3 +39,28 @@ class IsCrs:
     def __call__(self, instance, attribute, value):
         if value not in CRS:
             raise CrsException("This is not valid coordinate reference system")
+
+
+@attr.s
+class IsFile:
+
+    def __call__(self, instance, attribute, value):
+        if not os.path.isfile(value):
+            raise FileExistsError("This is not file")
+
+
+@attr.s
+class IsImageFile(IsFile):
+
+    def __call__(self, instance, attribute, value):
+        super().__call__(instance, attribute, value)
+        path, file_name = os.path.split(value)
+
+        try:
+            extension = file_name.split(".")[1]
+        except IndexError:
+            raise ExtensionException("File has not clearly specified extension")
+
+        if extension.lower() not in image_file_extensions:
+            raise ExtensionException("File has inappropriate extension")
+
