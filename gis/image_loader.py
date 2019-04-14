@@ -1,6 +1,8 @@
 import gdal
 import attr
 from gis.validators import IsImageFile
+from gis.raster_components import Pixel
+from gis.geometry import Extent
 
 
 @attr.s
@@ -21,18 +23,25 @@ class GdalImage:
 
     ds = attr.ib(type=gdal.Dataset)
     path = attr.ib()
+    crs = attr.ib(default="local")
 
     def __attrs_post_init__(self):
         self.__transform_params = self.ds.GetGeoTransform()
-        self.left_top_corner_x = self.__transform_params[0]
+        self.left_x = self.__transform_params[0]
         self.pixel_size_x = self.__transform_params[1]
-        self.left_top_corner_y = self.__transform_params[3]
+        self.top_y = self.__transform_params[3]
         self.pixel_size_y = -self.__transform_params[5]
         self.x_size = self.ds.RasterXSize
         self.y_size = self.ds.RasterYSize
+        self.pixel = Pixel(self.pixel_size_x, self.pixel_size_y)
+        self.extent = Extent.from_coordinates([
+            self.left_x, self.top_y - (self.y_size * self.pixel_size_y),
+            self.left_x + self.pixel_size_x * self.x_size, self.top_y
+        ], self.crs)
+        self.band_number = self.ds.RasterCount
 
     @classmethod
-    def load_from_file(cls, path):
+    def load_from_file(cls, path, crs):
         """
         class method which based on path returns GdalImage object,
         It validates path location and its format
@@ -41,7 +50,7 @@ class GdalImage:
         file = ImageFile(path)
         ds: gdal.Dataset = gdal.Open(file.path)
 
-        return cls(ds, path)
+        return cls(ds, path, crs)
 
     def __read_as_array(self, ds: gdal.Dataset):
         if not hasattr(self, "__array"):
