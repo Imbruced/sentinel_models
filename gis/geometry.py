@@ -7,6 +7,7 @@ scriptDirectory = os.path.dirname(os.path.realpath(__file__))
 import attr
 from gis.geometry_operations import count_delta
 from gis.validators import IsNumeric
+from typing import List
 
 
 @attr.s
@@ -170,3 +171,10 @@ class Extent:
         """
 
         return Extent(self.left_down, self.right_up.translate(x, y))
+
+    @classmethod
+    def from_coordinates(cls, coordinates: List[float], crs="local"):
+        point_a = Point(*coordinates[:2])
+        point_b = Point(*coordinates[2:])
+
+        return cls(point_a, point_b, crs)
