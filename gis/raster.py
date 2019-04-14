@@ -19,6 +19,7 @@ from gis.exceptions import PixelSizeException
 import numpy as np
 from gis.raster_components import create_two_dim_chunk
 import scipy.misc
+from gis.image_loader import GdalImage
 
 
 @attr.s
@@ -135,31 +136,20 @@ class Raster:
 
     @classmethod
     def from_file(cls, path, crs="local"):
-
         """
-        TODO This method needs simplifying
-        :param path:
-        :return:
+        Based on provided path to raster instance of class Raster will be created
+        :param path: str path to raster file, look at possible extension in GdalImage class
+        :param crs: Coordinate reference system
+        :return: Instance of Raster
         """
-        raster_from_file = cls.load_image(path)
-        left_top_corner_x, pixel_size_x, _, left_top_corner_y, _, pixel_size_y = raster_from_file.GetGeoTransform()
+        gdal_image = GdalImage.load_from_file(path, crs)
+        logger.info(gdal_image.array.shape)
+        ref = ReferencedArray(array=gdal_image.array.transpose([1, 2, 0]),
+                              crs=crs, extent=gdal_image.extent,
+                              band_number=gdal_image.band_number,
+                              shape=[gdal_image.pixel_size_y, gdal_image.pixel_size_x])
 
-        pixel_number_x = raster_from_file.RasterXSize
-        pixel_number_y = raster_from_file.RasterYSize
-
-        pixel = Pixel(pixel_size_x, -pixel_size_y)
-
-        extent = Extent(Point(left_top_corner_x, left_top_corner_y - -(pixel_number_y * pixel_size_y)),
-                        Point(left_top_corner_x + pixel_number_x * pixel_size_x, left_top_corner_y),
-                        crs=crs)
-
-        array = cls.gdal_file_to_array(raster_from_file, False)
-        band_number = cls.get_band_numbers_gdal(raster_from_file)
-
-        ref = ReferencedArray(array=array, crs=crs, extent=extent, band_number=band_number,
-                              shape=[pixel_number_y, pixel_number_x])
-
-        return cls(pixel=pixel, ref=ref)
+        return cls(pixel=gdal_image.pixel, ref=ref)
 
     @staticmethod
     def __create_raster(x_shape, y_shape):
@@ -237,24 +227,6 @@ class Raster:
         raster_ob = cls(pixel, ref)
         return raster_ob
 
-    @staticmethod
-    def load_image(path):
-        ds: gdal.Dataset = gdal.Open(path)
-        return ds
-
-    @staticmethod
-    def get_band_numbers_gdal(gdal_image):
-        return gdal_image.RasterCount
-
-    @staticmethod
-    def gdal_file_to_array(ds, use_gen=False):
-        return ds.ReadAsArray().transpose([1, 2, 0])
-        # if use_gen:
-        #     for band in range(ds.RasterCount):
-        #         yield ds.GetRasterBand(band + 1).ReadAsArray()
-        # else:
-        #     return ds.ReadAsArray()
-
 
 @attr.s
 class RasterData:
@@ -289,6 +261,12 @@ class RasterData:
                 current_image.save_gtiff(out_put_path + f"/image/image_{index}.tif", gdal.GDT_Int16)
             except Exception as e:
                 logger.error(e)
+
+    @classmethod
+    def from_path(cls, path: str, label_name: str, image_name: str):
+        label_path = os.path.join(path, label_name)
+        image_path = os.path.join(path, image_name)
+        pass
 
     def save_con_images(self):
         pass
