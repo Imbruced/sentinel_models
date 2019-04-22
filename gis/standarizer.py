@@ -4,35 +4,46 @@ import numpy as np
 from gis.log_lib import logger
 from gis.raster_components import ReferencedArray
 import os
-from gis.raster_components import Raster
+from gis.raster import Raster
 
 
+@attr.s
+class MaxScaler:
+    copy = attr.ib(default=True)
+    value = attr.ib(default=None, validator=[])
+
+    def fit(self, array: np.ndarray):
+        if type(array) != np.ndarray:
+            raise TypeError("This method accepts only numpy array")
+        maximum_value = array.max()
+        return MaxScaler(copy=True, value=maximum_value)
+
+    def fit_transform(self, array: np.ndarray):
+        self.value = array.max()
+        return array/self.value
+
+    def transform(self, array: np.ndarray):
+        if self.value is not None:
+            return array/self.value
+        else:
+            raise ValueError("Can not divide by None")
+
+
+@attr.s
 class StanarizeParams:
 
-    _band_number = attr.ib()
-    _coefficients = {}
-
-    def __init__(self, band_number):
-        self._band_number = band_number
+    band_number = attr.ib()
+    coefficients = attr.ib(default={})
 
     def add(self, coeff, band_name):
-        if len(self._coefficients.keys()) >= self._band_number:
-            raise OverflowError("Value is to high")
+        if band_name not in self.coefficients.keys():
+            self.coefficients[band_name] = coeff
         else:
-            try:
-                self._coefficients.get(band_name)
-            except KeyError:
-                self._coefficients[band_name] = coeff
-
-    @property
-    def coefficients(self):
-        return self._coefficients
-
-    @coefficients.setter
-    def coefficients(self, value):
-        raise ValueError("Value can not be set, please use add method")
+            logger.info("Overwriting value")
+            self.coefficients[band_name] = coeff
 
 
+@attr.s
 class ImageStand:
     """
     Class is responsible for scaling image data, it requires gis.raster.Raster object
@@ -40,62 +51,56 @@ class ImageStand:
     use standarize_image method to standarize data, it will return Raster with proper refactored image values
 
     """
+    stan_params = attr.ib(init=False)
+    raster = attr.ib()
+    names = attr.ib(default=None)
 
-    def __init__(self, raster, length, names=None):
-        self.__stan_params = StanarizeParams(length)
-        self.__names = [f"band_{band}" for band in range(length)] if names is None else names
-        logger.info(self.__names)
-        self.__raster = raster
+    def __attrs_post_init__(self):
+        self.stan_params = StanarizeParams(self.raster.ref.band_number)
+        self.names = [f"band_{band}" for band in range(self.raster.ref.band_number)] \
+            if self.names is None else self.names
 
     def save_params(self, path):
         if os.path.exists(path):
             raise FileExistsError("File with this name exists in directory")
         with open(path, "w") as file:
-            params_json = json.load(self.__stan_params.coefficients)
+            params_json = json.load(self.stan_params.coefficients)
             file.writelines(params_json)
 
-    def standarize_image(self, rescale_function=None):
+    def standarize_image(self, scaler=None):
         """
         Rescale data by maximum
         :return:
         """
-        empty_array = np.empty(shape=[*self.__raster.ref.shape, self.__raster.ref.band_number])
+        logger.info(self.raster.ref.extent.dy)
+        empty_array = np.empty(shape=[*self.raster.array.shape[:2],
+                                      int(self.raster.ref.band_number)])
+        logger.info(empty_array.shape)
 
-        for index, (band, name) in enumerate(zip(self.__raster.array, self.__names)):
-            empty_array[:, :, index] = self.__stand_one_dim(band, name, rescale_function)
+        for index, name in enumerate(self.names):
+            empty_array[:, :, index] = self.__stand_one_dim(self.raster.array[:, :, index], name, scaler)
             band = None
 
-        ref = ReferencedArray(empty_array, self.__raster.ref.extent, self.__raster.pixel, shape=self.__raster.ref.shape, band_number=self.__raster.ref.band_number)
+        ref = ReferencedArray(empty_array,
+                              self.raster.ref.extent,
+                              self.raster.pixel,
+                              shape=self.raster.ref.shape,
+                              band_number=self.raster.ref.band_number)
 
-        return Raster(self.__raster.pixel, ref)
+        return Raster(self.raster.pixel, ref)
 
-    def __stand_one_dim(self, array: np.ndarray, band_name: str, rescale_function=None):
+    def __stand_one_dim(self, array: np.ndarray, band_name: str, scaler):
         """
-        Standarizing 2 dim array, fnct for rescaling can be passed: require function which takes array and returns
-        array
+
         :param array:
+        :param band_name:
+        :param scaler:
         :return:
         """
-        if rescale_function is None:
-            stand_value = self.find_max(array)
-        else:
-            stand_value = rescale_function(array)
 
-        self.__stan_params.add(stand_value, band_name)
-        return array/stand_value
+        fitted = scaler.fit(array)
 
-    @staticmethod
-    def find_max(array: np.ndarray):
-        if type(array) != np.ndarray:
-            logger.error("Inappropriate type")
-            raise TypeError(f"Argument should be numpy ndarray, type {type(array)} found")
+        self.stan_params.coefficients[band_name] = fitted
 
-        return array.max()
-
-    @property
-    def stan_params(self):
-        return self.__stan_params
-
-    @stan_params.setter
-    def stan_params(self, value):
-        raise AttributeError("This param can' t be set")
+        self.stan_params.add(fitted, band_name)
+        return fitted.transform(array)
