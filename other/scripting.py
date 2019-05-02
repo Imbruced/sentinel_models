@@ -1,12 +1,12 @@
-import logging
+import logs
 
-logging.basicConfig(level="INFO")
+logs.basicConfig(level="INFO")
 
 
 class NumberDescriptor(object):
 
     def snoop_name(self, owner):
-        logging.info(dir(owner))
+        logs.info(dir(owner))
         for attr in dir(owner):
             if getattr(owner, attr) is self:
                 return attr

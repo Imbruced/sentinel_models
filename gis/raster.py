@@ -1,17 +1,19 @@
-from gis.raster_components import Pixel
-import attr
 import os
-from gis.geometry import Point
-from gis.geometry import Origin
+from copy import copy
+from typing import Union
+
+import scipy.misc
+import attr
 from osgeo import osr
 import ogr
+import gdal
+
+from gis.geometry import Point
+from gis.geometry import Origin
 from gis.geometry import GeometryFrame
 from gis.geometry import Extent
-from typing import Union
-from copy import copy
-import gdal
 from gis.raster_components import ReferencedArray
-from gis.log_lib import logger
+from gis.raster_components import Pixel
 from gis.exceptions import CrsException
 from logs.log_lib import logger
 from gis.image_loader import GdalImage
@@ -21,8 +23,6 @@ from gis.image_loader import GdalImage
 class Raster:
     pixel = attr.ib()
     ref = attr.ib()
-
-    # srs = attr.ib(default=osr.SpatialReference('LOCAL_CS["arbitrary"]'))
 
     def __attrs_post_init__(self):
         self.array = self.ref.array
@@ -59,7 +59,6 @@ class Raster:
         # transformed_ds.SetProjection()
 
         for band in range(self.array.shape[2]):
-            logger.info("Writing an array")
             transformed_ds.GetRasterBand(band + 1).WriteArray(self.array[:, :, band])
 
     @classmethod
@@ -223,56 +222,4 @@ class Raster:
         return raster_ob
 
 
-@attr.s
-class RasterData:
-    """
-    This class allows to simply create data to unet model, convolutional neural network and ANN network.
-    Data is prepared based on two arrays, they have to have equal shape
-    TODO Add asserting methods
-    """
 
-    image = attr.ib()
-    label = attr.ib()
-
-    def __attrs_post_init__(self):
-        if self.image.pixel != self.label.pixel:
-            raise PixelSizeException("Label and array pixel has to be the same in size")
-
-    def prepare_unet_images(self, image_size: List[int], remove_empty_labels=True):
-        chunks_array = create_two_dim_chunk(self.image.array, image_size)
-        chunks_label = create_two_dim_chunk(self.label.array, image_size)
-
-        for img, lbl in zip(chunks_array, chunks_label):
-            if remove_empty_labels or np.unique(lbl).__len__() > 1:
-                yield [img, lbl]
-
-    def save_unet_images(self, image_size: List[int], out_put_path: str):
-        for index, (image, label) in enumerate(self.prepare_unet_images(image_size)):
-            logger.info(image.shape)
-            current_label_image = Raster.from_array(label, self.image.pixel)
-            current_image = Raster.from_array(image, self.label.pixel)
-            try:
-                current_label_image.save_gtiff(out_put_path + f"/label/label_{index}.tif", gdal.GDT_Byte)
-                current_image.save_gtiff(out_put_path + f"/image/image_{index}.tif", gdal.GDT_Int16)
-            except Exception as e:
-                logger.error(e)
-
-    @classmethod
-    def from_path(cls, path: str, label_name: str, image_name: str):
-        label_path = os.path.join(path, label_name)
-        image_path = os.path.join(path, image_name)
-        pass
-
-    def save_con_images(self):
-        pass
-
-    def save_ann_csv(self):
-        pass
-
-    def assert_equal_size(self, array1: np.ndarray, array2: np.ndarray):
-        shape_1 = ArrayShape(array1.shape)
-        shape_2 = ArrayShape(array2.shape)
-        try:
-            assert shape_1 == shape_2
-        except AssertionError:
-            raise ValueError("Arrays dont have the same size")

@@ -1,5 +1,5 @@
 import attr
-from gis.validators import ispositive
+from validators.validators import ispositive
 import os
 from gis.meta import ConfigMeta
 import typing

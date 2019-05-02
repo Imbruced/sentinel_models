@@ -1,6 +1,6 @@
 import unittest
 from gis.geometry import Origin
-from gis.log_lib import logger
+from logs.log_lib import logger
 
 
 class GeometryOriginTest(unittest.TestCase):
