@@ -4,6 +4,9 @@ from keras.layers.pooling import MaxPooling2D
 from keras.layers.merge import concatenate
 from keras.models import Model
 
+from logs import logger
+from metrics import precision
+from metrics import recall
 
 def conv2d_block(input_tensor, n_filters, kernel_size=3, batchnorm=False):
     # first layer

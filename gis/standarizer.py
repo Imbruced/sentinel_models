@@ -1,7 +1,7 @@
 import attr
 import json
 import numpy as np
-from gis.log_lib import logger
+from logs import logger
 from gis.raster_components import ReferencedArray
 import os
 from gis.raster import Raster

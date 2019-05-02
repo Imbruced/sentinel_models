@@ -13,12 +13,7 @@ import gdal
 from gis.raster_components import ReferencedArray
 from gis.log_lib import logger
 from gis.exceptions import CrsException
-from gis.raster_components import ArrayShape
-from typing import List
-from gis.exceptions import PixelSizeException
-import numpy as np
-from gis.raster_components import create_two_dim_chunk
-import scipy.misc
+from logs.log_lib import logger
 from gis.image_loader import GdalImage
 
 
