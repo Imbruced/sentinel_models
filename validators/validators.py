@@ -4,8 +4,6 @@ from gis.exceptions import CrsException
 from gis.crs import CRS
 import os
 from gis.exceptions import ExtensionException
-from gis.log_lib import logger
-
 
 image_file_extensions = [
     "png",
@@ -15,6 +13,7 @@ image_file_extensions = [
     "jpg",
     "jpeg"
 ]
+
 
 def ispositive(instance, attribute, value):
     if value <= 0:
@@ -63,4 +62,36 @@ class IsImageFile(IsFile):
 
         if extension.lower() not in image_file_extensions:
             raise ExtensionException("File has inappropriate extension")
+
+
+def validate_shapes(x, y):
+    pass
+
+
+class UnetImageShape:
+
+    def __call__(self, instance=None, attribute=None, value=None):
+        if not isinstance(value, tuple) and not isinstance(value, list):
+            raise TypeError("Shape should be list or tuple")
+        if len(value) != 3:
+            raise AttributeError("Length should be 3")
+
+        for val in value:
+            if not isinstance(val, int):
+                raise TypeError("Value should be integer")
+
+        dimension = value[-1]
+
+        if dimension <= 0:
+            raise AttributeError("Dimension should be >= 0")
+
+        shapes = value[:-1]
+
+        if not all([self.__validate_dimension(val) for val in shapes]):
+            raise ValueError("Dimension should be multiplicity of 2 and >= 16")
+
+
+    def __validate_dimension(self, value):
+        return not value % 2 and value > 16
+
 
