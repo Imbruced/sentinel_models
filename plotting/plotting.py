@@ -1,4 +1,4 @@
-from gis.log_lib import logger
+from logs.log_lib import logger
 import matplotlib.pyplot as plt
 
 
