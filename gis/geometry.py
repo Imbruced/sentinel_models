@@ -1,13 +1,18 @@
 from abc import ABC
-import geopandas as gpd
 import os
+from typing import List
+
+import attr
+import geopandas as gpd
+
+
+from gis.geometry_operations import count_delta
+from validators.validators import IsNumeric
 from gis.exceptions import GeometryCollectionError
 from gis.exceptions import GeometryTypeError
+
+
 scriptDirectory = os.path.dirname(os.path.realpath(__file__))
-import attr
-from gis.geometry_operations import count_delta
-from gis.validators import IsNumeric
-from typing import List
 
 
 @attr.s
@@ -57,8 +62,6 @@ class GeometryFrame(ABC):
     # def transform(self, to_epsg, from_epsg=None):
     #     if self.crs is None or self.crs == "":
     #         self.crs =
-
-
 
     def _assert_geom_type(self):
         unique_geometries = [el for el in set(self.frame.type) if el is not None]
