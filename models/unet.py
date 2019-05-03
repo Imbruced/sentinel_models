@@ -7,6 +7,8 @@ from keras.models import Model
 from keras.layers import Input
 from keras.optimizers import Adam
 from sklearn.model_selection import train_test_split
+import numpy as np
+from keras.models import load_model
 
 from logs import logger
 from metrics import precision
@@ -90,7 +92,6 @@ class UnetConfig:
                               self.dropout,
                               self.batchnorm)
 
-
 @attr.s
 class UnetData:
     """
@@ -143,19 +144,29 @@ class Unet:
     def save(self, path):
         pass
 
-    def predict(self, x):
+    def predict(self, x, threshold=0.5):
         if not self.is_trained:
             raise AttributeError("Model is not trained yet")
-        return self.config.model.predict(x)
+        predicted = self.config.model.predict(x)
+
+        return (predicted > threshold).astype(np.uint8)
 
     @classmethod
-    def load_from_file(cls, path):
+    def load_from_weight_file(cls, path, config: UnetConfig):
         """
-        This method is created to load model wages from existing file
-        :param path: location of model file
+
+        :param path:
+        :param config:
         :return:
         """
-        pass
+
+        model = load_model(path)
+        logger.info(model)
+        config.model = model
+        unet_model = cls(config=config)
+        unet_model.is_trained = True
+        unet_model.is_compiled = True
+        return unet_model
 
     @classmethod
     def from_rasters(cls, unet_config: UnetConfig):
