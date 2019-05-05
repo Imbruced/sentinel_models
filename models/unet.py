@@ -72,7 +72,7 @@ def get_unet(input_img, n_filters, dropout, batchnorm):
     u9 = Dropout(dropout)(u9)
     c9 = conv2d_block(u9, n_filters=n_filters * 1, kernel_size=3, batchnorm=batchnorm)
 
-    outputs = Conv2D(1, (1, 1), activation='relu')(c9)
+    outputs = Conv2D(1, (1, 1), activation='sigmoid')(c9)
     model = Model(inputs=[input_img], outputs=[outputs])
     return model
 
@@ -134,7 +134,7 @@ class Unet:
         )
         self.is_trained = True
 
-    def compile(self, optimizer=Adam(), loss="binary_crossentropy", metrics=[precision, recall, "accuracy"], **kwargs):
+    def compile(self, optimizer=Adam(lr=0.00001), loss="binary_crossentropy", metrics=[precision, recall, "accuracy"], **kwargs):
         self.config.model.compile(optimizer=optimizer,
                                   loss=loss,
                                   metrics=metrics,
