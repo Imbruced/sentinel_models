@@ -1,5 +1,7 @@
 from typing import List
+from typing import Iterable
 import os
+from functools import reduce
 
 import attr
 import numpy as np
@@ -31,20 +33,36 @@ class RasterData:
 
         # self.assert_equal_size(self.image.array, self.label.array)
 
+    def _with_empty_removal(self, label_image: np.array, image_size: List[int]):
+        number_of_pixels = reduce((lambda x, y: x*y), image_size)
+
+        uniques, counts = np.unique(label_image, return_counts=True)
+        minimum_counts = min(np.unique(label_image, return_counts=True)[1].tolist())
+        percent_of_minimum = float(minimum_counts)/float(number_of_pixels) * 100.0
+        unique_values = uniques.tolist().__len__()
+
+        return unique_values > 1 and percent_of_minimum > 30.0
+
+
+    def _without_empty_romval(self, label_image: np.array, image_size: List[int]):
+        return True
+
     def prepare_unet_images(self, image_size: List[int], remove_empty_labels=True):
         chunks_array = create_two_dim_chunk(self.image.array, image_size)
         chunks_label = create_two_dim_chunk(self.label.array, image_size)
-
         x_data = []
         y_data = []
+
+        asigning_function = self._with_empty_removal if remove_empty_labels else self._without_empty_romval
+
         for img, lbl in zip(chunks_array, chunks_label):
-            if remove_empty_labels or np.unique(lbl).__len__() > 1:
+            if asigning_function(lbl, image_size):
                 x_data.append(img)
                 y_data.append(lbl)
+
         logger.info(np.array(x_data).shape)
         logger.info(np.array(y_data).shape)
         return UnetData(np.array(x_data), np.array(y_data))
-
 
     def save_unet_images(self, image_size: List[int], out_put_path: str):
         for index, (image, label) in enumerate(self.prepare_unet_images(image_size)):
