@@ -5,14 +5,10 @@ from keras.layers.pooling import MaxPooling2D
 from keras.layers.merge import concatenate
 from keras.models import Model
 from keras.layers import Input
-from keras.optimizers import Adam
-from sklearn.model_selection import train_test_split
-import numpy as np
-from keras.models import load_model
 
-from logs import logger
-from metrics import precision
-from metrics import recall
+from models.abstract import ModelConfig
+from models.abstract import AbstractModel
+from models.abstract import ModelData
 
 
 def conv2d_block(input_tensor, n_filters, kernel_size, batchnorm):
@@ -78,95 +74,36 @@ def get_unet(input_img, n_filters, dropout, batchnorm):
 
 
 @attr.s
-class UnetConfig:
+class UnetConfig(ModelConfig):
 
     input_size = attr.ib(default=(128, 128, 13))
     filters = attr.ib(default=16)
-    dropout = attr.ib(default=0.5)
-    batchnorm = attr.ib(default=False)
 
-    def __attrs_post_init__(self):
-        self.input_image = Input(self.input_size, name='img')
-        self.model = get_unet(self.input_image,
-                              self.filters,
-                              self.dropout,
-                              self.batchnorm)
 
 @attr.s
-class UnetData:
+class UnetData(ModelData):
     """
     TODO
     add validators
     """
-
-    x = attr.ib()
-    y = attr.ib()
-    test_size = attr.ib(default=0.15)
+    test_size = attr.ib(default=0.1)
     random_state = attr.ib(default=2018)
-
-    def __attrs_post_init__(self):
-        self.x_train, self.x_test, self.y_train, self.y_test = self.__split_data()
-
-    def __split_data(self):
-        return train_test_split(
-            self.x,
-            self.y,
-            test_size=self.test_size,
-            random_state=self.random_state
-        )
 
 
 @attr.s
-class Unet:
+class Unet(AbstractModel):
 
     is_trained = attr.ib(default=False, init=False)
-    config = attr.ib(default=UnetConfig())
     is_compiled = attr.ib(default=False, init=False)
+    model = attr.ib(default=None)
 
-    def fit(self, data, callbacks, batch_size, epochs):
-        self.config.model.fit(
-            data.x_train,
-            data.y_train,
-            batch_size=batch_size,
-            epochs=epochs,
-            validation_data=(data.x_test, data.y_test),
-            callbacks=callbacks
-        )
-        self.is_trained = True
 
-    def compile(self, optimizer=Adam(lr=0.00001), loss="binary_crossentropy", metrics=[precision, recall, "accuracy"], **kwargs):
-        self.config.model.compile(optimizer=optimizer,
-                                  loss=loss,
-                                  metrics=metrics,
-                                  **kwargs)
-        self.is_compiled = True
-
-    def save(self, path):
-        pass
-
-    def predict(self, x, threshold=0.5):
-        if not self.is_trained:
-            raise AttributeError("Model is not trained yet")
-        predicted = self.config.model.predict(x)
-
-        return (predicted > threshold).astype(np.uint8)
-
-    @classmethod
-    def load_from_weight_file(cls, path, config: UnetConfig):
-        """
-
-        :param path:
-        :param config:
-        :return:
-        """
-
-        model = load_model(path)
-        logger.info(model)
-        config.model = model
-        unet_model = cls(config=config)
-        unet_model.is_trained = True
-        unet_model.is_compiled = True
-        return unet_model
+    def __attrs_post_init__(self):
+        self.input_image = Input(self.config.input_size, name='img')
+        self.model = get_unet(self.input_image,
+                              self.config.filters,
+                              self.config.dropout,
+                              self.config.batchnorm)
 
     @classmethod
     def from_rasters(cls, unet_config: UnetConfig):
@@ -175,11 +112,4 @@ class Unet:
     @classmethod
     def from_arrays(cls, unet_co):
         pass
-
-    def summary(self):
-
-        if self.is_compiled:
-            self.config.model.summary()
-        else:
-            logger.info("Model is not compiled, please compile it")
 
