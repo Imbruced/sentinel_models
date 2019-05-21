@@ -6,6 +6,8 @@ from keras.models import load_model
 from sklearn.model_selection import train_test_split
 import numpy as np
 from keras.optimizers import Adam
+from keras.models import Sequential
+from keras.layers import Dense
 
 from logs import logger
 
@@ -40,9 +42,9 @@ class ModelData(ABC):
 class AbstractModel(ABC):
 
     config = attr.ib()
-    is_trained = attr.ib(default=False, init=False)
-    is_compiled = attr.ib(default=False, init=False)
-    model = attr.ib(default=None)
+    is_trained = attr.ib()
+    is_compiled = attr.ib()
+    model = attr.ib()
 
     def compile(self):
         self.config.model.compile(optimizer=self.config.optimizer,
@@ -91,6 +93,58 @@ class AbstractModel(ABC):
             self.config.model.summary()
         else:
             logger.info("Model is not compiled, please compile it")
+
+
+@attr.s
+class ModelBuilder(AbstractModel):
+
+    model_data = attr.ib()
+
+    def __attrs_post_init__(self):
+        self.model = Sequential()
+        self.model.add(
+            Dense(
+                units=None,
+                activation=None,
+                input_dim=None
+            )
+        )
+
+    def add_layer(self, units, activations, input_data):
+        """
+        TODO add copy
+        :param units:
+        :param activations:
+        :param input_data:
+        :return:
+        """
+        current_seq = self.model
+        current_seq.add(Dense(
+            units,
+            activations,
+            input_data))
+
+        return ModelBuilder(
+            model=current_seq,
+            config=None,
+            is_trained=False,
+            is_compiled=False,
+            model_data=None
+    )
+
+
+
+ @attr.s
+ class AnnConfig(Config)
+    pass
+
+@attr.s
+class Ann(ModelBuilder):
+
+    def __attrs_post_init__(self):
+        pass
+
+
 
 
 
