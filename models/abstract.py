@@ -10,6 +10,7 @@ from keras.models import Sequential
 from keras.layers import Dense
 
 from logs import logger
+from exceptions import ConfigException
 
 
 @attr.s
@@ -61,7 +62,7 @@ class AbstractModel(ABC):
 
         return (predicted > threshold).astype(np.uint8)
 
-    def fit(self, data, epochs):
+    def fit(self, data: ModelData, epochs: int):
         self.config.model.fit(
             data.x_train,
             data.y_train,
@@ -130,13 +131,13 @@ class ModelBuilder(AbstractModel):
             is_trained=False,
             is_compiled=False,
             model_data=None
-    )
+        )
 
 
-
- @attr.s
- class AnnConfig(Config)
+@attr.s
+class AnnConfig(ModelConfig):
     pass
+
 
 @attr.s
 class Ann(ModelBuilder):
@@ -144,8 +145,50 @@ class Ann(ModelBuilder):
     def __attrs_post_init__(self):
         pass
 
+    @classmethod
+    def from_dict_config(cls, dict_config: dict):
+        """
+
+        :param dict_config:
+        :return:
+        """
 
 
+class ConfigDict(dict):
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.__validate()
+
+    def __validate_keys(self) -> bool:
+        return set(self.keys()).intersection(
+            {"activation_function", "layers"}
+        ).__len__() == len({"activation_function", "layers"})
+
+    def __validate_values(self) -> bool:
+        if self.values():
+            unique_types = set([type(el) for el in self.values()])
+        else:
+            return False
+        return len(unique_types) == 1 and list(unique_types)[0] == list
+
+    def __validate_sizes(self) -> bool:
+        layers = self.get("layers", [])
+        activation_function = self.get("activation_function", [])
+
+        return len(layers) == len(activation_function) and len(layers) and len(activation_function)
+
+    def __validate(self):
+        if not self.__validate_values() or not self.__validate_keys() or not self.__validate_sizes():
+            raise ConfigException("Provided bad version of config")
+
+
+s = ConfigDict(
+    # activation_function=[],
+    # layers=[1],
+    activation_function=["relu"]
+)
+
+print(s)
 
 
