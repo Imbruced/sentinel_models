@@ -1,5 +1,4 @@
 from typing import List
-from typing import Iterable
 import os
 from functools import reduce
 
