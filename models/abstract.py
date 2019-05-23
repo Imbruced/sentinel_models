@@ -1,5 +1,6 @@
 from abc import ABC
 from typing import List
+from copy import deepcopy
 
 import attr
 from keras.models import load_model
@@ -8,6 +9,7 @@ import numpy as np
 from keras.optimizers import Adam
 from keras.models import Sequential
 from keras.layers import Dense
+from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 from logs import logger
 from exceptions import ConfigException
@@ -25,8 +27,8 @@ class ModelConfig(ABC):
 
 @attr.s
 class ModelData(ABC):
-    x = attr.ib()
-    y = attr.ib()
+    x = attr.ib(type=np.ndarray)
+    y = attr.ib(type=np.ndarray)
     test_size = attr.ib(default=0.15)
     random_state = attr.ib(default=2018)
 
@@ -37,6 +39,7 @@ class ModelData(ABC):
             test_size=self.test_size,
             random_state=self.random_state
         )
+        self.number_of_classes = np.unique(self.y)
 
 
 @attr.s
@@ -48,10 +51,10 @@ class AbstractModel(ABC):
     model = attr.ib()
 
     def compile(self):
-        self.config.model.compile(optimizer=self.config.optimizer,
-                                  loss=self.loss,
-                                  metrics=self.metrics
-                                  )
+        self.model.compile(optimizer=self.config.optimizer,
+                           loss=self.config.loss,
+                           metrics=self.config.metrics
+            )
         self.is_compiled = True
 
     def predict(self, x, threshold) -> np.ndarray:
@@ -96,42 +99,111 @@ class AbstractModel(ABC):
             logger.info("Model is not compiled, please compile it")
 
 
+class ConfigDict(dict):
+
+    def __init__(self, **kwargs):
+        """
+        TODO add enumeration
+        :param kwargs:
+        """
+        super().__init__(**kwargs)
+        self.__activation_name = "activation"
+        self.__layers = "layers"
+        self.__input_dim = "input_dim"
+        self.__validate()
+
+    def __validate_keys(self) -> bool:
+        """
+        TODO
+        enumeration should have proper length method to simplify the code in ine 125
+        :return:
+        """
+        return set(self.keys()).intersection(
+            {self.__activation_name,
+             self.__layers,
+             self.__input_dim
+             }
+        ).__len__() == len({self.__activation_name, self.__layers, self.__input_dim})
+
+    @classmethod
+    def from_yaml(cls):
+        pass
+
+    @classmethod
+    def from_json(cls):
+        pass
+
+    @classmethod
+    def from_csv(cls):
+        pass
+
+    def __validate_values(self) -> bool:
+        if self.values():
+            unique_types = set([type(value) for key, value in self.items() if key != "input_dim"])
+        else:
+            return False
+        return len(unique_types) == 1 and list(unique_types)[0] == list
+
+    def __validate_sizes(self) -> bool:
+        layers = self.get(self.__layers, [])
+        activation_function = self.get(self.__activation_name, [])
+
+        return len(layers) == len(activation_function) and len(layers) and len(activation_function)
+
+    def __validate(self):
+        if not self.__validate_values() or not self.__validate_keys() or not self.__validate_sizes():
+            raise ConfigException("Provided bad version of config")
+
+
 @attr.s
 class ModelBuilder(AbstractModel):
 
-    model_data = attr.ib()
+    config_dict = attr.ib(type=ConfigDict)
+    model = attr.ib(default=Sequential())
 
-    def __attrs_post_init__(self):
-        self.model = Sequential()
-        self.model.add(
-            Dense(
-                units=None,
-                activation=None,
-                input_dim=None
-            )
+    def build(self):
+        current_model = self.__add_layer(
+            self.config_dict["layers"][0],
+            self.config_dict["activation"][0],
+            input_dim=self.config_dict["input_dim"]
         )
 
-    def add_layer(self, units, activations, input_data):
-        """
-        TODO add copy
-        :param units:
-        :param activations:
-        :param input_data:
-        :return:
-        """
-        current_seq = self.model
-        current_seq.add(Dense(
-            units,
-            activations,
-            input_data))
+        if len(self.config_dict["layers"]) > 1:
+            for index in range(1, len(self.config_dict["layers"])):
+                print(index)
+                current_model = self.__add_layer(
+                    self.config_dict["layers"][index],
+                    self.config_dict["activation"][index]
+            )
 
         return ModelBuilder(
-            model=current_seq,
-            config=None,
+            model=current_model.__add_layer(
+                units=self.config_dict["layers"][-1],
+                activation=self.config_dict["activation"][-1]
+            ).model,
+            config=self.config,
+            config_dict=self.config_dict,
             is_trained=False,
-            is_compiled=False,
-            model_data=None
+            is_compiled=False
         )
+
+    def __add_layer(self, units, activation, **kwargs):
+        current_seq = self.model
+
+        current_seq.add(Dense(
+            units=units,
+            activation=activation,
+            **kwargs))
+
+        return ModelBuilder(
+            model=current_seq.model,
+            config_dict=deepcopy(self.config_dict),
+            config=self.config,
+            is_trained=False,
+            is_compiled=False
+        )
+
+
 
 
 @attr.s
@@ -154,41 +226,29 @@ class Ann(ModelBuilder):
         """
 
 
-class ConfigDict(dict):
-
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self.__validate()
-
-    def __validate_keys(self) -> bool:
-        return set(self.keys()).intersection(
-            {"activation_function", "layers"}
-        ).__len__() == len({"activation_function", "layers"})
-
-    def __validate_values(self) -> bool:
-        if self.values():
-            unique_types = set([type(el) for el in self.values()])
-        else:
-            return False
-        return len(unique_types) == 1 and list(unique_types)[0] == list
-
-    def __validate_sizes(self) -> bool:
-        layers = self.get("layers", [])
-        activation_function = self.get("activation_function", [])
-
-        return len(layers) == len(activation_function) and len(layers) and len(activation_function)
-
-    def __validate(self):
-        if not self.__validate_values() or not self.__validate_keys() or not self.__validate_sizes():
-            raise ConfigException("Provided bad version of config")
-
-
 s = ConfigDict(
-    # activation_function=[],
-    # layers=[1],
-    activation_function=["relu"]
+    activation=["relu", "relu", "relu", "softmax"],
+    layers=[13, 10, 10, 13],
+    input_dim=13
 )
 
-print(s)
+callbacks = [
+    EarlyStopping(patience=100, verbose=1),
+    ReduceLROnPlateau(factor=0.1, patience=100, min_lr=0, verbose=1),
+    ModelCheckpoint('model_more_class_pixels.h5', verbose=1, save_best_only=True, save_weights_only=False)
+]
 
+config = ModelConfig(
+    callbacks=callbacks
+)
+
+builder = ModelBuilder(
+    config_dict=s,
+    config=config,
+    is_compiled=False,
+    is_trained=False
+)
+
+builder.build().compile()
+builder.summary()
 
