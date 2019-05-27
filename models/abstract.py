@@ -13,6 +13,7 @@ from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 from logs import logger
 from exceptions import ConfigException
+from gis.enums import ConfDictAttributes
 
 
 @attr.s
@@ -40,6 +41,30 @@ class ModelData(ABC):
             random_state=self.random_state
         )
         self.number_of_classes = np.unique(self.y)
+
+
+@attr.s
+class EmptyModel(ABC):
+    model = attr.ib()
+
+    @staticmethod
+    def create(units, activation, **kwags):
+        seq = Sequential()
+        seq.add(
+            Dense(units=units, activation=activation)
+        )
+        return EmptyModel(
+            model=seq
+        )
+
+    def build(self):
+        pass
+
+    def compile(self):
+        pass
+
+empty_model = EmptyModel.create(10, "relu")
+empty_model.model.summary()
 
 
 @attr.s
@@ -77,7 +102,7 @@ class AbstractModel(ABC):
         self.is_trained = True
 
     @classmethod
-    def load_from_weight_file(cls, path, config: ModelConfig):
+    def load_from_weight_file(cls, path, config: TrainingConfig):
         """
 
         :param path:
