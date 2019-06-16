@@ -14,7 +14,8 @@ from gis.geometry import GeometryFrame
 from gis.geometry import Extent
 from gis.raster_components import ReferencedArray
 from gis.raster_components import Pixel
-from gis.exceptions import CrsException
+from exceptions.exceptions import CrsException
+from gis.writers import ImageWriter
 from logs.log_lib import logger
 from gis.image_loader import GdalImage
 
@@ -28,41 +29,18 @@ class Raster:
         self.array = self.ref.array
         self.extent = self.ref.extent
 
-    def save_png(self, path):
-
-        scipy.misc.imsave(path + 'outfile.jpg', self.array)
-
-    def save_gtiff(self, path, raster_dtype):
+    def write(self):
         """
-        TODO delete hardcoded values and use existing classes to simplify the code
-        This method is not production ready it needs to be simplified and properly
-        rewritten
+
         :param path:
         :param raster_dtype:
         :return:
         """
-        drv = gdal.GetDriverByName("GTiff")
-        # path = Path(path)
-        # if not path.is_file():
-        #     raise FileNotFoundError()
-        #
-        # if os.path.isfile(path):
-        #     raise FileExistsError("File currently exists")
-        logger.info(path)
-        if not os.path.exists(os.path.split(path)[0]):
-            os.makedirs(os.path.split(path)[0], exist_ok=True)
 
-        band_number = self.array.shape[2]
-
-        ds = drv.Create(path, self.array.shape[1], self.array.shape[0], band_number, raster_dtype)
-        transformed_ds = self.__transform(ds, self.extent.origin, self.pixel)
-        # transformed_ds.SetProjection()
-
-        for band in range(self.array.shape[2]):
-            transformed_ds.GetRasterBand(band + 1).WriteArray(self.array[:, :, band])
+        return ImageWriter(data=self)
 
     @classmethod
-    def empty_raster(cls, extent, pixel):
+    def empty_raster(cls, extent: Extent = Extent(), pixel: Pixel = Pixel(0.1, 0.1)):
         transformed_raster, extent_new = cls.__gdal_raster_from_extent(extent, pixel)
         return cls.__convert_gdal_raster_raster_instance(transformed_raster, extent_new, pixel)
 
@@ -153,7 +131,7 @@ class Raster:
         return raster
 
     @staticmethod
-    def __transform(raster, origin: Origin, pixel: Pixel):
+    def transform(raster, origin: Origin, pixel: Pixel):
         copy_raster = raster
         copy_raster.SetGeoTransform((origin.x, pixel.x, 0.0, origin.y + (raster.RasterYSize * pixel.y), 0, -pixel.y))
         left_top_corner_x, pixel_size_x, _, left_top_corner_y, _, pixel_size_y = copy_raster.GetGeoTransform()
@@ -190,7 +168,7 @@ class Raster:
                                   (new_extent.origin.y + new_extent.dy) * pixel.y))
 
         raster = cls.__create_raster(new_extent.dx, new_extent.dy)
-        transformed_raster = cls.__transform(raster, extent.origin, pixel)
+        transformed_raster = cls.transform(raster, extent.origin, pixel)
 
         return transformed_raster, extent_new
 
