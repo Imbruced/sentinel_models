@@ -1,14 +1,49 @@
+from abc import ABC
+
 import attr
+import gdal
+
+from logs import logger
 from validators.validators import ispositive
 import os
 from gis.meta import ConfigMeta
 import typing
 
+from exceptions import OptionNotAvailableException
+
+
+@attr.s
+class Options(ABC):
+    POSSIBLE_OPTIONS = []
+    options = attr.ib(factory=dict)
+
+    def __getitem__(self, item):
+        if item in self.options.keys():
+            return self.options[item]
+        else:
+            raise KeyError(f"Can not find {item} in ")
+
+    def __setitem__(self, key, value):
+        if key in self.options.keys():
+            self.options[key] = value
+        else:
+            raise OptionNotAvailableException(f"Can not find option specified in {self.options.keys()}")
+
+
+@attr.s
+class ImageOptions(Options):
+    def_options = dict(
+        dtype=gdal.GDT_Byte,
+        format="geotiff"
+    )
+    options = attr.ib(default=def_options)
+
+
 
 @attr.s
 class Pixel(metaclass=ConfigMeta):
-    x = attr.ib(default=1, validator=[attr.validators.instance_of(float), ispositive])
-    y = attr.ib(default=0, validator=[attr.validators.instance_of(float), ispositive])
+    x = attr.ib(default=1.0, validator=[attr.validators.instance_of(float), ispositive])
+    y = attr.ib(default=1.0, validator=[attr.validators.instance_of(float), ispositive])
     unit = attr.ib(default='m', validator=[attr.validators.instance_of(str)])
 
     @classmethod
