@@ -13,8 +13,7 @@ from exceptions import OptionNotAvailableException
 
 
 @attr.s
-class Options(ABC):
-    POSSIBLE_OPTIONS = []
+class Options:
     options = attr.ib(factory=dict)
 
     def __getitem__(self, item):
@@ -24,21 +23,15 @@ class Options(ABC):
             raise KeyError(f"Can not find {item} in ")
 
     def __setitem__(self, key, value):
+        if key == "format":
+            raise AttributeError("format can not be used in options")
         if key in self.options.keys():
             self.options[key] = value
         else:
             raise OptionNotAvailableException(f"Can not find option specified in {self.options.keys()}")
 
-
-@attr.s
-class ImageOptions(Options):
-    def_options = dict(
-        dtype=gdal.GDT_Byte,
-        format="geotiff"
-    )
-    options = attr.ib(default=def_options)
-
-
+    def __eq__(self, other):
+        return self.options == other.options
 
 @attr.s
 class Pixel(metaclass=ConfigMeta):
