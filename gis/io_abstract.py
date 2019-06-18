@@ -111,3 +111,13 @@ class DefaultOptionRead:
             }
         )
 
+    @classmethod
+    def geotiff(cls):
+        return Options(
+            {
+                "format": "geotiff",
+                "crs": "4326"
+            }
+        )
+
+
