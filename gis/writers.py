@@ -1,104 +1,79 @@
-import inspect
-import re
-import sys
-from abc import ABC
-from typing import Dict
-
 import attr
 import gdal
 from PIL import Image
 
 from exceptions import OptionNotAvailableException
-from gis.raster_components import ImageOptions, Options
+from exceptions.exceptions import FormatNotAvailable
+from gis.io_abstract import IoHandler, DefaultOptionWrite
+from gis.raster_components import Options
 from logs import logger
 
 
 @attr.s
-class ClsFinder:
-
-    name = attr.ib(type="str")
-
-    def __get_cls_tuples(self):
-        return inspect.getmembers(sys.modules[self.name], inspect.isclass)
-
-    @property
-    def available_cls(self):
-        __cls = []
-        for cls in self.__get_cls_tuples():
-            try:
-                __cls.append(cls[1])
-            except IndexError:
-                pass
-        return __cls
-
-
-@attr.s
-class Writer(ABC):
+class Writer(IoHandler):
     data = attr.ib()
-    writer_options = attr.ib(type=Options)
+    io_options = attr.ib(type=Options())
 
     def save(self, path: str):
         raise NotImplemented()
 
     def options(self, **kwargs):
-        for key in kwargs:
-            self.writer_options[key] = kwargs[key]
+        current_options = super().options(**kwargs)
+        return self.__class__(data=self.data, io_options=current_options)
 
-        return self.__class__(self.data, Options({**kwargs}))
+    def format(self, format):
+        try:
+            default_options = getattr(DefaultOptionWrite, format)()
+        except AttributeError:
+            raise FormatNotAvailable("Can not found requested format")
 
-    def __get_writers(self, regex) -> Dict[str, str]:
-        return {cl.format_name: cl
-                for cl in ClsFinder(__name__).available_cls
-                if re.match(regex, cl.__name__)
-                }
-
-    def available_writers(self, regex):
-        if not hasattr(self, "__writers"):
-            setattr(self, "__writers", self.__get_writers(regex))
-        return getattr(self, "__writers")
+        return self.__class__(
+            data=self.data,
+            io_options=default_options
+        )
 
 
 @attr.s
 class ImageWriter(Writer):
     data = attr.ib()
-    writer_options = attr.ib(default=ImageOptions())
+    io_options = attr.ib(default=getattr(DefaultOptionWrite, "geotiff")())
 
     def save(self, path: str):
         image_format = self.__get_writer()
         writer = self.writers[image_format](
-            writer_options=self.writer_options,
+            io_options=self.io_options,
             data=self.data
         )
         writer.save(path)
 
     def __get_writer(self):
-        image_format = self.writer_options["format"]
+        image_format = self.io_options["format"]
         if image_format not in self.writers:
             raise OptionNotAvailableException(f"Option {image_format} is not implemented \n available options {self.__str_writers}")
         return image_format
 
     @property
     def writers(self):
-        return super().available_writers(r"(\w+)ImageWriter")
+        return self.available_cls(r"(\w+)ImageWriter", __name__)
 
     @property
     def __str_writers(self):
-        return ", ".join(super().available_writers(r"(\w+)ImageWriter"))
+        return ", ".join(self.available_cls(r"(\w+)ImageWriter", __name__))
 
 
 @attr.s
 class GeoTiffImageWriter:
     format_name = "geotiff"
     data = attr.ib()
-    writer_options = attr.ib()
+    io_options = attr.ib()
 
     def save(self, path: str):
         drv = gdal.GetDriverByName("GTiff")
         raster = self.data
         band_number = raster.array.shape[2]
         array = raster.array
-        logger.info(self.writer_options)
-        dtype = self.writer_options["dtype"]
+        logger.info(self.io_options)
+        dtype = self.io_options["dtype"]
         logger.info(dtype)
 
         ds = drv.Create(path, array.shape[1], array.shape[0], band_number, dtype)
@@ -106,14 +81,14 @@ class GeoTiffImageWriter:
         for band in range(array.shape[2]):
             transformed_ds.GetRasterBand(band + 1).WriteArray(array[:, :, band])
 
+
 @attr.s
 class PngImageWriter:
     format_name = "png"
     data = attr.ib()
-    writer_options = attr.ib()
+    io_options = attr.ib()
 
     def save(self, path: str):
-
         im = Image.fromarray(self.data.array[:, :, 0])
         im.save(path)
 
