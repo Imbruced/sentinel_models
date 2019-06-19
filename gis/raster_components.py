@@ -33,6 +33,14 @@ class Options:
     def __eq__(self, other):
         return self.options == other.options
 
+    def get(self, item, default=None):
+        try:
+            value = self.options[item]
+        except KeyError:
+            value = default
+        return value
+
+
 @attr.s
 class Pixel(metaclass=ConfigMeta):
     x = attr.ib(default=1.0, validator=[attr.validators.instance_of(float), ispositive])
