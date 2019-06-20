@@ -1,23 +1,22 @@
-import os
 from copy import copy
 from typing import Union
 
-import scipy.misc
 import attr
 from osgeo import osr
 import ogr
 import gdal
 
-from gis.geometry import Point
 from gis.geometry import Origin
 from gis.geometry import GeometryFrame
 from gis.geometry import Extent
-from gis.raster_components import ReferencedArray
 from gis.raster_components import Pixel
 from exceptions.exceptions import CrsException
-from gis.writers import ImageWriter
 from logs.log_lib import logger
-from gis.image_loader import GdalImage
+
+
+@attr.s
+class RasterReader:
+    pass
 
 
 @attr.s
@@ -28,21 +27,6 @@ class Raster:
     def __attrs_post_init__(self):
         self.array = self.ref.array
         self.extent = self.ref.extent
-
-    def write(self):
-        """
-
-        :param path:
-        :param raster_dtype:
-        :return:
-        """
-
-        return ImageWriter(data=self)
-
-    @classmethod
-    def empty_raster(cls, extent: Extent = Extent(), pixel: Pixel = Pixel(0.1, 0.1)):
-        transformed_raster, extent_new = cls.__gdal_raster_from_extent(extent, pixel)
-        return cls.__convert_gdal_raster_raster_instance(transformed_raster, extent_new, pixel)
 
     @classmethod
     def from_wkt(cls, geometry: str, extent, pixel):
@@ -106,29 +90,22 @@ class Raster:
 
         return cls.__convert_gdal_raster_raster_instance(transformed_raster, extent_new, pixel)
 
-    @classmethod
-    def from_file(cls, path, crs="local"):
-        """
-        Based on provided path to raster instance of class Raster will be created
-        :param path: str path to raster file, look at possible extension in GdalImage class
-        :param crs: Coordinate reference system
-        :return: Instance of Raster
-        """
-        gdal_image = GdalImage.load_from_file(path, crs)
-        logger.info(gdal_image.array.shape)
-        ref = ReferencedArray(array=gdal_image.array.transpose([1, 2, 0]),
-                              crs=crs, extent=gdal_image.extent,
-                              band_number=gdal_image.band_number,
-                              shape=[gdal_image.pixel_size_y, gdal_image.pixel_size_x])
-
-        return cls(pixel=gdal_image.pixel, ref=ref)
-
-    @staticmethod
-    def __create_raster(x_shape, y_shape):
-        memory_ob = gdal.GetDriverByName('MEM')
-        raster = memory_ob.Create('', x_shape, y_shape, 1, gdal.GDT_Byte)
-
-        return raster
+    # @classmethod
+    # def from_file(cls, path, crs="local"):
+    #     """
+    #     Based on provided path to raster instance of class Raster will be created
+    #     :param path: str path to raster file, look at possible extension in GdalImage class
+    #     :param crs: Coordinate reference system
+    #     :return: Instance of Raster
+    #     """
+    #     gdal_image = GdalImage.load_from_file(path, crs)
+    #     logger.info(gdal_image.array.shape)
+    #     ref = ReferencedArray(array=gdal_image.array.transpose([1, 2, 0]),
+    #                           crs=crs, extent=gdal_image.extent,
+    #                           band_number=gdal_image.band_number,
+    #                           shape=[gdal_image.pixel_size_y, gdal_image.pixel_size_x])
+    #
+    #     return cls(pixel=gdal_image.pixel, ref=ref)
 
     @staticmethod
     def transform(raster, origin: Origin, pixel: Pixel):
@@ -151,36 +128,6 @@ class Raster:
 
         return raster
 
-    @classmethod
-    def __gdal_raster_from_extent(cls, extent, pixel):
-        """
-        This method based on extent instance and pixel value creating empty raster
-
-        :param extent: instance of Extent
-        :param pixel: instance of pixel
-        :return: gdal raster prepared based on specified extent
-        """
-
-        new_extent = extent.scale(pixel.x, pixel.y)
-
-        extent_new = Extent(Point(extent.origin.x, extent.origin.y),
-                            Point((new_extent.origin.x + new_extent.dx) * pixel.x,
-                                  (new_extent.origin.y + new_extent.dy) * pixel.y))
-
-        raster = cls.__create_raster(new_extent.dx, new_extent.dy)
-        transformed_raster = cls.transform(raster, extent.origin, pixel)
-
-        return transformed_raster, extent_new
-
-    @classmethod
-    def __convert_gdal_raster_raster_instance(cls, transformed_raster, extent, pixel):
-        array = transformed_raster.ReadAsArray()
-        reshaped_array = array.reshape(*array.shape, 1)
-        ref = ReferencedArray(array=reshaped_array, crs="2180", extent=extent, shape=array.shape[:2])
-        raster_ob = cls(pixel=pixel, ref=ref)
-
-        return raster_ob
-
     @staticmethod
     def reshape_array(array):
         try:
@@ -191,13 +138,6 @@ class Raster:
             array_copy = array.reshape(*array.shape, 1)
         logger.error(f"Wymiar po reshapie {array_copy.shape}")
         return array_copy
-
-    @classmethod
-    def from_array(cls, array, pixel, extent=Extent(Point(0, 0), Point(0, 0))):
-        array_copy = array
-        ref = ReferencedArray(array=array_copy, crs=extent.crs, extent=extent, shape=array.shape[:2])
-        raster_ob = cls(pixel, ref)
-        return raster_ob
 
 
 

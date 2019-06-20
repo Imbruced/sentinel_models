@@ -49,3 +49,8 @@ class OptionNotAvailableException(Exception):
 class FormatNotAvailable(Exception):
     def __init__(self, message):
         super().__init__(message)
+
+
+class DimensionException(Exception):
+    def __init__(self, message):
+        super().__init__(message)

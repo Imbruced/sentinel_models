@@ -99,7 +99,12 @@ class DefaultOptionRead:
         return Options(
             {
                 "format": "wkt",
-                "crs": "4326"
+                "crs": "4326",
+                "pixel": None,
+                "origin": None,
+                "value": 1,
+                "x_size": None,
+                "y_size": None
             }
         )
 

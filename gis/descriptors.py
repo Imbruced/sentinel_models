@@ -1,4 +1,4 @@
-from gis.exceptions import LessThanZeroException
+from exceptions.exceptions import LessThanZeroException
 from abc import ABC
 
 

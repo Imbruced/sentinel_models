@@ -7,7 +7,7 @@ import numpy as np
 import gdal
 import pandas as pd
 
-from gis.exceptions import PixelSizeException
+from exceptions.exceptions import PixelSizeException
 from gis.raster_components import create_two_dim_chunk
 from gis.raster import Raster
 from gis.raster_components import ArrayShape
@@ -41,7 +41,6 @@ class RasterData:
         unique_values = uniques.tolist().__len__()
 
         return unique_values > 1 and percent_of_minimum > 30.0
-
 
     def _without_empty_romval(self, label_image: np.array, image_size: List[int]):
         return True

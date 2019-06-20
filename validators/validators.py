@@ -1,9 +1,9 @@
 import attr
-from gis.exceptions import LessThanZeroException
-from gis.exceptions import CrsException
+from exceptions.exceptions import LessThanZeroException
+from exceptions.exceptions import CrsException
 from gis.crs import CRS
 import os
-from gis.exceptions import ExtensionException
+from exceptions.exceptions import ExtensionException
 
 image_file_extensions = [
     "png",
@@ -38,6 +38,12 @@ class IsCrs:
     def __call__(self, instance, attribute, value):
         if value not in CRS:
             raise CrsException("This is not valid coordinate reference system")
+
+
+class WktValidator:
+    """TODO add wkt validator"""
+    def __call__(self, instance, attribute, value):
+        pass
 
 
 @attr.s
@@ -89,7 +95,6 @@ class UnetImageShape:
 
         if not all([self.__validate_dimension(val) for val in shapes]):
             raise ValueError("Dimension should be multiplicity of 2 and >= 16")
-
 
     def __validate_dimension(self, value):
         return not value % 2 and value > 16

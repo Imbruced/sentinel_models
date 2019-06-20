@@ -1,9 +1,5 @@
-from abc import ABC
-
 import attr
-import gdal
 
-from logs import logger
 from validators.validators import ispositive
 import os
 from gis.meta import ConfigMeta
@@ -25,6 +21,8 @@ class Options:
     def __setitem__(self, key, value):
         if key == "format":
             raise AttributeError("format can not be used in options")
+        if value is None:
+            raise TypeError("Value can not be error")
         if key in self.options.keys():
             self.options[key] = value
         else:
@@ -36,9 +34,10 @@ class Options:
     def get(self, item, default=None):
         try:
             value = self.options[item]
+            ret_value = value if value is not None else default
         except KeyError:
-            value = default
-        return value
+            raise KeyError(f"Argument {item} is not available")
+        return ret_value
 
 
 @attr.s

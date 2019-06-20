@@ -1,3 +1,4 @@
+import re
 from abc import ABC
 import os
 from typing import List
@@ -7,12 +8,23 @@ import geopandas as gpd
 
 
 from gis.geometry_operations import count_delta
-from validators.validators import IsNumeric
-from gis.exceptions import GeometryCollectionError
-from gis.exceptions import GeometryTypeError
+from validators.validators import IsNumeric, WktValidator
+from exceptions.exceptions import GeometryCollectionError
+from exceptions.exceptions import GeometryTypeError
 
 
 scriptDirectory = os.path.dirname(os.path.realpath(__file__))
+
+
+def lazy_property(fn):
+    attr_name = '__' + fn.__name__
+
+    @property
+    def wrapper(self):
+        if not hasattr(self, attr_name):
+            setattr(self, attr_name, fn(self))
+        return getattr(self, attr_name)
+    return wrapper
 
 
 @attr.s
@@ -113,6 +125,31 @@ class Point:
 
 
 @attr.s
+class PointCollection:
+    points = attr.ib(factory=list, type=List[Point])
+    crs = attr.ib(default="local")
+
+    def __max_y(self):
+        return max([el.y for el in self.points])
+
+    def __max_x(self):
+        return max([el.x for el in self.points])
+
+    def __min_x(self):
+        return min([el.x for el in self.points])
+
+    def __min_y(self):
+        return min([el.y for el in self.points])
+
+    @lazy_property
+    def extent(self):
+        return Extent(
+            Point(self.__min_x(), self.__min_y()),
+            Point(self.__max_x(), self.__max_y())
+        )
+
+
+@attr.s
 class Line:
     start = attr.ib()
     end = attr.ib()
@@ -181,3 +218,38 @@ class Extent:
         point_b = Point(*coordinates[2:])
 
         return cls(point_a, point_b, crs)
+
+
+def cast_float(string: str):
+    try:
+        casted = float(string)
+    except TypeError:
+        raise TypeError(f"Can not cast to float value {string}")
+    return casted
+
+
+@attr.s
+class Wkt:
+
+    wkt_string = attr.ib(type=str, validator=WktValidator())
+    crs = attr.ib(default="local")
+
+    def __split(self):
+        return re.findall(r"(-*\d+\.*\d*) (-*\d+\.*\d*)", self.wkt_string)
+
+    def get_type(self):
+        pass
+
+    @lazy_property
+    def extent(self) -> Extent:
+        return PointCollection(self.coordinates, crs=self.crs).extent
+
+    @lazy_property
+    def coordinates(self):
+        try:
+            coordinates = [Point(cast_float(el[0]), cast_float(el[1])) for el in self.__split()]
+        except TypeError:
+            raise TypeError("Wrong wkt format")
+        except IndexError:
+            raise IndexError("Wrong wkt format")
+        return coordinates
