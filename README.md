@@ -29,6 +29,8 @@ raster.show()
 ```
 <img src="https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_wkt_default_parameters.PNG" width="200">
 
+ <h4> Loading from Shape File</h4>
+ 
 ```python
 shape_path = "/tests/data/shapes/domy.shp"
 raster = Raster\
