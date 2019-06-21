@@ -5,28 +5,29 @@ will also work for other data sources. Library is in beta version still,
 some of the functionality may not be available. 
 ## Requirements
 ## Use cases
-Example use 
+<h2> Class Raster</h2>
+
+ This class allows to load data from various formats. Currently available are:
+ <li> Shapefile (shp) </li>
+ <li> Geotiff (geotiff) </li>
+ <li> PNG (png) </li>
+ <li> WKT (wkt) </li>
+ <br>
+ When the shape file or any other geometry format is loaded, it is converted into 
+ raster based on coordinates, Array size depends on pixel size and extent size.
+ It can be passed via extent and pixel in options method.
+ 
+ <h4> Loading from wkt</h4>
+ 
 ```python
-import matplotlib
-from gis.geometry import PolygonFrame
-from gis.raster import Raster
-import matplotlib.pyplot as plt
-
-
-matplotlib.use('Qt5Agg')
-
-if __name__ == "__main__":
-    shape_path = "~tests\\domy.shp"
-    polygon_frame = PolygonFrame.from_file(shape_path)
-    main_image = Raster.from_file("~tests\\buildings.tif")
-    label_raster = Raster.with_adjustment("from_geo", main_image, polygon_frame)
-
-    plt.imshow(label_raster.array[:, :, 0])
-    plt.show()
-
+wkt = "Polygon((110.0 105.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 105.0))"
+raster = Raster\
+            .read\
+            .format("wkt")\
+            .load(wkt)
+raster.show()
 ```
-
-![alt text](https://github.com/Imbruced/sentinel_models/blob/master/tests/example_result.PNG)
+![alt text](https://github.com/Imbruced/sentinel_models/blob/raster_refactor/raster_from_wkt_default_parameters.PNG)
 
 
 
