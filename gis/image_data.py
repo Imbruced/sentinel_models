@@ -10,8 +10,9 @@ import numpy as np
 
 from gis.decorators import classproperty
 from gis.io_abstract import IoHandler, DefaultOptionWrite
-from gis.geometry import Extent, Point, Origin, Wkt
+from gis.geometry import Extent, Point, Origin, Wkt, GeometryFrame
 from gis.raster_components import Pixel
+from plotting import ImagePlot
 from validators.validators import IsImageFile
 from exceptions.exceptions import FormatNotAvailable, OptionNotAvailableException, DimensionException
 from gis.io_abstract import DefaultOptionRead
@@ -188,6 +189,10 @@ class Raster:
     def array(self):
         return self.ref.array
 
+    def show(self):
+        plotter = ImagePlot(self.array[:, :, 0])
+        plotter.plot()
+
 
 @attr.s
 class Writer(IoHandler):
@@ -346,12 +351,19 @@ class PngImageReader:
 
 @attr.s
 class RasterFromGeometryReader(ABC):
+    path = attr.ib()
+    io_options = attr.ib()
 
     @classmethod
     def wkt_to_gdal_raster(cls, wkt, options):
-        x_size: int = options.get("x_size", wkt.extent.dx + int(wkt.extent.dx * 0.3)+1)
-        y_size: int = options.get("y_size", wkt.extent.dy + int(wkt.extent.dy * 0.3)+1)
-        gdal_in_memory = GdalImage.in_memory(int(x_size), int(y_size))
+        extent = options.get(
+            "extent",
+            wkt.extent.expand_percentage_equally(0.3)
+        )
+        pixel: Pixel = options.get("pixel", Pixel(0.5, 0.5))
+        gdal_in_memory, extent_new = GdalImage.from_extent(
+            extent, pixel
+        )
 
         return gdal_in_memory
 
@@ -359,46 +371,21 @@ class RasterFromGeometryReader(ABC):
 @attr.s
 class ShapeImageReader(RasterFromGeometryReader):
     format_name = "shp"
-    pass
+
+    def load(self):
+        geoframe = GeometryFrame.from_file(self.path).show()
 
 
 @attr.s
 class WktImageReader(RasterFromGeometryReader):
     format_name = "wkt"
-    path = attr.ib()
-    io_options = attr.ib()
 
     def load(self):
         wkt: Wkt = Wkt(self.path)
-        # x_size: int = self.io_options.get("x_size", wkt.extent.dx + int(wkt.extent.dx * 0.3)+1)
-        # y_size: int = self.io_options.get("y_size", wkt.extent.dy + int(wkt.extent.dy * 0.3)+1)
-        #
-        origin: Origin = self.io_options.get("origin", wkt.extent.left_down.translate(
-            int(-wkt.extent.dx * 0.15) - 1,
-            int(-wkt.extent.dy * 0.15) - 1
-        ))
-        pixel: Pixel = self.io_options.get("pixel", Pixel(0.5, 0.5))
-        gdal_in_memory, extent_new = GdalImage.from_extent(wkt.extent, pixel)
+        gdal_raster = self.wkt_to_gdal_raster(wkt, self.io_options)
 
-        # origin: Origin = self.io_options.get("origin", wkt.extent.left_down.translate(
-        #     int(-wkt.extent.dx * 0.15) - 1,
-        #     int(-wkt.extent.dy * 0.15) - 1
-        # ))
-
-        gdal_in_memory.insert_polygon(
+        gdal_raster.insert_polygon(
             wkt.wkt_string,
             self.io_options["value"]
         )
-
-        # gdal_in_memory.transform(Origin(origin.x, origin.y), pixel)
-
-        return gdal_in_memory.to_raster()
-
-
-wkt = "Polygon((110.0 110.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 110.0))"
-
-raster = Raster \
-    .read \
-    .format("wkt") \
-    .load(wkt)
-raster.array.shape
+        return gdal_raster.to_raster()
