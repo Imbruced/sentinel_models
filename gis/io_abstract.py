@@ -101,10 +101,8 @@ class DefaultOptionRead:
                 "format": "wkt",
                 "crs": "4326",
                 "pixel": None,
-                "origin": None,
                 "value": 1,
-                "x_size": None,
-                "y_size": None
+                "extent": None
             }
         )
 
@@ -122,6 +120,19 @@ class DefaultOptionRead:
             {
                 "format": "geotiff",
                 "crs": "4326"
+            }
+        )
+
+    @classmethod
+    def shp(cls):
+        return Options(
+            {
+                "format": "shp",
+                "type": None,
+                "crs": "4326",
+                "extent": None,
+                "pixel": None,
+                "value": 1
             }
         )
 
