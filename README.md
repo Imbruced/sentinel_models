@@ -37,4 +37,6 @@ raster = Raster\
             .load()
 raster.show()
 ```
+
 <img src="https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_shp_default_parameters.PNG" width="250">
+
