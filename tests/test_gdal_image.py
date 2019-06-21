@@ -185,12 +185,35 @@ class TestImageDataModule(TestCase):
              ).load(wkt)
         # raster.show()
 
-    def test_reading_raster_from_shapefile(self):
+    def test_reading_raster_from_shapefile_value_baased_on_column(self):
+        shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
+
+        raster = Raster \
+            .read \
+            .format("shp") \
+            .options(color_column="cls") \
+            .load(shape_path)
+        self.assertEqual(np.unique(raster.array).tolist(), [0, 1, 2, 3, 4, 5])
+
+        # raster.show()
+
+    def test_reading_raster_from_shapefile_value_the_same(self):
         shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
 
         raster = Raster \
             .read \
             .format("shp") \
             .load(shape_path)
-        raster.show()
+        self.assertEqual(np.unique(raster.array).tolist(), [0, 1])
+        # raster.show()
+
+    def test_reading_raster_from_shapefile_all_values_different(self):
+        shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
+
+        raster = Raster \
+            .read \
+            .format("shp") \
+            .options(all_unique="True") \
+            .load(shape_path)
+        self.assertEqual(np.unique(raster.array).tolist(), list(range(0, 89)))
 

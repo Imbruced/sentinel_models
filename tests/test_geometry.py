@@ -47,3 +47,7 @@ class TestGeometry(TestCase):
     def test_showing_geoframe_like_spark(self):
         shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
         frame = GeometryFrame.from_file(shape_path).show(2, True)
+
+    def test_extent_to_wkt(self):
+        extent = Extent()
+        self.assertEqual(extent.to_wkt(), "POLYGON((0 0, 0 1, 1 1, 1 0, 0 0))")
