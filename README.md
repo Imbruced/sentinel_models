@@ -60,3 +60,30 @@ raster.show()
 
 <img src="https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_shp_default_parameters.PNG" width="250">
 
+To get raster value based on shape file column, use color_column attribute in options
+
+```python
+raster = Raster\
+            .read\
+            .format("shp")\
+            .options(
+                pixel=Pixel(0.5, 0.5),
+                color_column="cls"
+            ).load(shape_path)
+raster.show()
+```
+<img src="https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_shp_pixel_0_5_color_column_cls.PNG" width="250">
+
+To get different values for all records pass 
+
+```python
+raster = Raster\
+            .read\
+            .format("shp")\
+            .options(
+                all_unique="True"
+            ).load(shape_path)
+raster.show()
+```
+<img src="https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_shp_pixel_0_5_all_different.PNG" width="250">
+
