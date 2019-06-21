@@ -27,7 +27,7 @@ raster = Raster\
             .load(wkt)
 raster.show()
 ```
-![alt text](https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_wkt_default_parameters.PNG | width=48)
+![alt text](https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_wkt_default_parameters.PNG = 48x48)
 
 
 
