@@ -27,6 +27,14 @@ raster = Raster\
             .load(wkt)
 raster.show()
 ```
-<img src="https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_wkt_default_parameters.PNG" width="150">
+<img src="https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_wkt_default_parameters.PNG" width="200">
 
-
+```python
+shape_path = "/tests/data/shapes/domy.shp"
+raster = Raster\
+            .read\
+            .format("shp")\
+            .load()
+raster.show()
+```
+<img src="https://github.com/Imbruced/sentinel_models/blob/raster_refactor/docs/images/raster_from_shp_default_parameters.PNG" width="250">
