@@ -355,10 +355,10 @@ class RasterFromGeometryReader(ABC):
     io_options = attr.ib()
 
     @classmethod
-    def wkt_to_gdal_raster(cls, wkt, options):
+    def wkt_to_gdal_raster(cls, default_extent, options):
         extent = options.get(
             "extent",
-            wkt.extent.expand_percentage_equally(0.3)
+            default_extent.expand_percentage_equally(0.3)
         )
         pixel: Pixel = options.get("pixel", Pixel(0.5, 0.5))
         gdal_in_memory, extent_new = GdalImage.from_extent(
@@ -367,13 +367,57 @@ class RasterFromGeometryReader(ABC):
 
         return gdal_in_memory
 
+    @classmethod
+    def _find_extent_from_multiple_wkt(cls, wkt_value_list):
+        bottom_corners = [el[0].extent.left_down for el in wkt_value_list]
+        top_corners = [el[0].extent.right_up for el in wkt_value_list]
+
+        min_x = min(bottom_corners, key=lambda x: x.x).x
+        min_y = min(bottom_corners, key=lambda x: x.y).y
+        max_x = max(top_corners, key=lambda x: x.x).x
+        max_y = max(top_corners, key=lambda x: x.y).y
+
+        extent = Extent(
+            Point(min_x, min_y),
+            Point(max_x, max_y)
+        )
+        return extent
+
 
 @attr.s
 class ShapeImageReader(RasterFromGeometryReader):
     format_name = "shp"
 
     def load(self):
-        geoframe = GeometryFrame.from_file(self.path).show()
+        geoframe = GeometryFrame.from_file(self.path).to_wkt()
+        gdf = self.__add_value_column(geoframe)
+
+        wkt_value_list = [[Wkt(el[0]), el[1]] for el in gdf[["wkt", "raster_value"]].values.tolist()]
+
+        extent = self._find_extent_from_multiple_wkt(wkt_value_list)
+
+        gdal_raster = self.wkt_to_gdal_raster(extent, self.io_options)
+
+        for wkt, value in wkt_value_list:
+            gdal_raster.insert_polygon(wkt.wkt_string, value)
+        return gdal_raster.to_raster()
+
+    def __add_value_column(self, gdf: GeometryFrame):
+        all_unique = self.io_options["all_unique"]
+        gdf = gdf.frame
+        if self.io_options["color_column"] is not None:
+            gdf["raster_value"] = gdf[self.io_options["color_column"]]
+        elif all_unique == "True":
+            try:
+                gdf.drop_column(["index"], axis=1)
+            except AttributeError:
+                pass
+            gdf = gdf.reset_index()
+            gdf = gdf.rename(columns={"index": "raster_value"})
+        elif all_unique == "False":
+            gdf["raster_value"] = self.io_options["value"]
+
+        return gdf
 
 
 @attr.s
@@ -382,10 +426,18 @@ class WktImageReader(RasterFromGeometryReader):
 
     def load(self):
         wkt: Wkt = Wkt(self.path)
-        gdal_raster = self.wkt_to_gdal_raster(wkt, self.io_options)
+        gdal_raster = self.wkt_to_gdal_raster(wkt.extent, self.io_options)
 
         gdal_raster.insert_polygon(
             wkt.wkt_string,
             self.io_options["value"]
         )
         return gdal_raster.to_raster()
+
+
+@attr.s
+class PostgisGeomImageReader(RasterFromGeometryReader):
+    format_name = "postgis_geom"
+
+    def load(self):
+        pass
