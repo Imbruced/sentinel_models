@@ -132,7 +132,9 @@ class DefaultOptionRead:
                 "crs": "4326",
                 "extent": None,
                 "pixel": None,
-                "value": 1
+                "value": 1,
+                "all_unique": "False",
+                "color_column": None
             }
         )
 
