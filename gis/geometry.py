@@ -138,8 +138,7 @@ class GeometryFrame:
         except AssertionError:
             raise GeometryTypeError("Your input geometry type is incorrect")
 
-    def show(self, limit, truncate):
-        """TODO add method of showing which spark has"""
+    def show(self, limit=5, truncate=True):
         DataFrameShower(self.frame).show(limit, truncate)
 
     def plot(self):
@@ -294,6 +293,18 @@ class Extent:
 
     def expand_equally(self, value):
         return self.expand(value, value)
+
+    def to_wkt(self):
+        coordinates = [
+                        self.left_down,
+                        self.left_down.translate(0, self.dy),
+                        self.right_up,
+                        self.left_down.translate(self.dx, 0),
+                        self.left_down
+        ]
+
+        coordinates_text = ", ".join([f"{el.x} {el.y}" for el in coordinates])
+        return f"POLYGON(({coordinates_text}))"
 
 
 def cast_float(string: str):
