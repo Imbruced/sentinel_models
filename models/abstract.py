@@ -17,7 +17,7 @@ from gis.enums import ConfDictAttributes
 
 
 @attr.s
-class ModelConfig(ABC):
+class TrainingConfig(ABC):
     callbacks = attr.ib()
     dropout = attr.ib(default=0.5)
     batchnorm = attr.ib(default=False)
@@ -124,31 +124,22 @@ class AbstractModel(ABC):
             logger.info("Model is not compiled, please compile it")
 
 
-class ConfigDict(dict):
+class ModelBuilderConfig(dict):
 
     def __init__(self, **kwargs):
-        """
-        TODO add enumeration
-        :param kwargs:
-        """
         super().__init__(**kwargs)
-        self.__activation_name = "activation"
-        self.__layers = "layers"
-        self.__input_dim = "input_dim"
         self.__validate()
 
     def __validate_keys(self) -> bool:
-        """
-        TODO
-        enumeration should have proper length method to simplify the code in ine 125
-        :return:
-        """
+
         return set(self.keys()).intersection(
-            {self.__activation_name,
-             self.__layers,
-             self.__input_dim
+            {ConfDictAttributes.at.value,
+             ConfDictAttributes.la.value,
+             ConfDictAttributes.ind.value
              }
-        ).__len__() == len({self.__activation_name, self.__layers, self.__input_dim})
+        ).__len__() == len({ConfDictAttributes.at.value,
+                            ConfDictAttributes.la.value,
+                            ConfDictAttributes.ind.value})
 
     @classmethod
     def from_yaml(cls):
@@ -164,14 +155,14 @@ class ConfigDict(dict):
 
     def __validate_values(self) -> bool:
         if self.values():
-            unique_types = set([type(value) for key, value in self.items() if key != "input_dim"])
+            unique_types = set([type(value) for key, value in self.items() if key != ConfDictAttributes.ind.value])
         else:
             return False
         return len(unique_types) == 1 and list(unique_types)[0] == list
 
     def __validate_sizes(self) -> bool:
-        layers = self.get(self.__layers, [])
-        activation_function = self.get(self.__activation_name, [])
+        layers = self.get(ConfDictAttributes.la.value, [])
+        activation_function = self.get(ConfDictAttributes.at.value, [])
 
         return len(layers) == len(activation_function) and len(layers) and len(activation_function)
 
@@ -179,62 +170,63 @@ class ConfigDict(dict):
         if not self.__validate_values() or not self.__validate_keys() or not self.__validate_sizes():
             raise ConfigException("Provided bad version of config")
 
+    @property
+    def layers(self):
+        return self[ConfDictAttributes.la.value]
+
+    @property
+    def activations(self):
+        return self[ConfDictAttributes.at.value]
+
+    @property
+    def input_dim(self):
+        return self[ConfDictAttributes.ind.value]
+
 
 @attr.s
 class ModelBuilder(AbstractModel):
 
-    config_dict = attr.ib(type=ConfigDict)
     model = attr.ib(default=Sequential())
 
-    def build(self):
+    def build(self, config: ModelBuilderConfig):
         current_model = self.__add_layer(
-            self.config_dict["layers"][0],
-            self.config_dict["activation"][0],
-            input_dim=self.config_dict["input_dim"]
+            config.layers[0],
+            config.activations[0],
+            input_dim=config.input_dim
         )
 
-        if len(self.config_dict["layers"]) > 1:
-            for index in range(1, len(self.config_dict["layers"])):
+        if len(config.layers) > 1:
+            for index in range(1, len(config.layers)):
                 print(index)
                 current_model = self.__add_layer(
-                    self.config_dict["layers"][index],
-                    self.config_dict["activation"][index]
+                    config.layers[index],
+                    config.activations[index]
             )
 
         return ModelBuilder(
             model=current_model.__add_layer(
-                units=self.config_dict["layers"][-1],
-                activation=self.config_dict["activation"][-1]
+                units=config.layers[-1],
+                activations=config.activations[-1]
             ).model,
             config=self.config,
-            config_dict=self.config_dict,
             is_trained=False,
             is_compiled=False
         )
 
-    def __add_layer(self, units, activation, **kwargs):
+    def __add_layer(self, units: list, activations: list, **kwargs):
         current_seq = self.model
 
         current_seq.add(Dense(
             units=units,
-            activation=activation,
+            activation=activations,
             **kwargs))
 
         return ModelBuilder(
             model=current_seq.model,
-            config_dict=deepcopy(self.config_dict),
-            config=self.config,
+            config=config,
             is_trained=False,
             is_compiled=False
         )
-
-
-
-
-@attr.s
-class AnnConfig(ModelConfig):
-    pass
-
 
 @attr.s
 class Ann(ModelBuilder):
@@ -251,29 +243,29 @@ class Ann(ModelBuilder):
         """
 
 
-s = ConfigDict(
-    activation=["relu", "relu", "relu", "softmax"],
-    layers=[13, 10, 10, 13],
-    input_dim=13
-)
-
-callbacks = [
-    EarlyStopping(patience=100, verbose=1),
-    ReduceLROnPlateau(factor=0.1, patience=100, min_lr=0, verbose=1),
-    ModelCheckpoint('model_more_class_pixels.h5', verbose=1, save_best_only=True, save_weights_only=False)
-]
-
-config = ModelConfig(
-    callbacks=callbacks
-)
-
-builder = ModelBuilder(
-    config_dict=s,
-    config=config,
-    is_compiled=False,
-    is_trained=False
-)
-
-builder.build().compile()
-builder.summary()
+# s = ModelBuilderConfig(
+#     activations=["relu", "relu", "relu", "softmax"],
+#     layers=[13, 10, 10, 13],
+#     input_dim=13
+# )
+#
+# callbacks = [
+#     EarlyStopping(patience=100, verbose=1),
+#     ReduceLROnPlateau(factor=0.1, patience=100, min_lr=0, verbose=1),
+#     ModelCheckpoint('model_more_class_pixels.h5', verbose=1, save_best_only=True, save_weights_only=False)
+# ]
+#
+# config = TrainingConfig(
+#     callbacks=callbacks
+# )
+#
+# builder = ModelBuilder(
+#     config=config,
+#     is_compiled=False,
+#     is_trained=False
+# )
+#
+# builder.build(s).compile()
+# builder.model.summary()
+# # builder.summary()
 

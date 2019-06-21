@@ -441,3 +441,10 @@ class PostgisGeomImageReader(RasterFromGeometryReader):
 
     def load(self):
         pass
+
+wkt = "Polygon((110.0 105.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 105.0))"
+raster = Raster\
+            .read\
+            .format("wkt")\
+            .load(wkt)
+raster.show()

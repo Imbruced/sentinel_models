@@ -1,34 +1,49 @@
 from typing import Union
 
+import attr
+
 from logs.log_lib import logger
 import matplotlib.pyplot as plt
 
+@attr.s
+class SubPlots:
+    images = attr.ib()
 
-class ImagePlot:
-
-    def __init__(self):
-        self._images = []
-
-    def plot(self, nrows=1):
-        image_numbers = self._images.__len__()
+    def plot(self, nrows):
+        image_numbers = self.images.__len__()
         ncols = image_numbers // nrows
-        logger.info(f"Cols number: {ncols}")
-        logger.info(f"Row number {nrows}")
 
         figure, axes = plt.subplots(nrows=nrows,
                                     ncols=ncols,
-                                    figsize=(self._images.__len__()*5, 10),
+                                    figsize=(self.images.__len__() * 5, 10),
                                     sharey="all")
 
-        for index, image in enumerate(self._images):
-            logger.info(index)
+        for index, image in enumerate(self.images):
             curr_column = (index + ncols) % ncols
             curr_row = index // ncols
             axes[curr_row][curr_column].imshow(image)
         plt.show()
 
     def add(self, array):
-        self._images.append(array)
+        return self.__class__([*self.images, array])
 
-    def extend(self, images: Union[list, tuple]):
-        self._images.extend(list(images))
+    def extend(self, *arrays):
+        return self.__class__([*self.images, *arrays])
+
+
+@attr.s
+class ImagePlot:
+
+    image = attr.ib()
+
+    def plot(self):
+        figure = plt.figure()
+        axis = figure.add_axes([0, 0, 1, 1])
+        axis.imshow(self.image)
+        plt.show()
+
+    def add(self, array):
+        return SubPlots([self.image, array])
+
+    def extend(self, *arrays):
+        return SubPlots([self.image, *arrays])

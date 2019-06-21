@@ -1,25 +1,14 @@
-import matplotlib.pyplot as plt
-import os
-import numpy as np
 import pandas as pd
 from keras.models import Sequential
 from keras.layers import Dense
-from sklearn.metrics import confusion_matrix
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import classification_report
-import matplotlib.patches as mpatches
-from keras import optimizers
-import math
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
-import tensorflow as tf
-import keras.backend as K
 from accuracy_functions import fmeasure
 from sklearn.preprocessing import StandardScaler
 from accuracy_functions import precision
 from accuracy_functions import recall
-from collections import namedtuple
-import inspect
 import itertools
+
 
 def return_max_label(*args, columns):
     max_value = max(args)
