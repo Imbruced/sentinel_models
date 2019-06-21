@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from gis.geometry import Wkt, Point, Extent
+from gis.geometry import Wkt, Point, Extent, GeometryFrame
 
 
 class TestGeometry(TestCase):
@@ -44,4 +44,6 @@ class TestGeometry(TestCase):
             Extent(Point(x=110.0, y=110.0), Point(x=120.0, y=120.0))
         )
 
-
+    def test_showing_geoframe_like_spark(self):
+        shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
+        frame = GeometryFrame.from_file(shape_path).show(2, True)

@@ -165,14 +165,32 @@ class TestImageDataModule(TestCase):
         raster = Raster \
             .read \
             .format("wkt") \
-            .load(wkt)
-        raster.array.shape
-        plotter = ImagePlot()
-        plotter.extend([
-            raster.array[:, :, 0],
-            raster.array[:, :, 0],
-            raster.array[:, :, 0],
-            raster.array[:, :, 0]
-        ])
-        plotter.plot(2)
+            .options(
+             pixel=Pixel(0.2, 0.2),
+             value=10
+            ).load(wkt)
+
+        array = raster.array
+        self.assertEqual(array[array == 10].size, 2601)
+
+    def test_raster_show(self):
+        wkt = "Polygon((110.0 110.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 110.0))"
+
+        raster = Raster \
+            .read \
+            .format("wkt") \
+            .options(
+                pixel=Pixel(0.7, 0.7),
+                value=10
+             ).load(wkt)
+        # raster.show()
+
+    def test_reading_raster_from_shapefile(self):
+        shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
+
+        raster = Raster \
+            .read \
+            .format("shp") \
+            .load(shape_path)
+        raster.show()
 
