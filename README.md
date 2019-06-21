@@ -36,7 +36,7 @@ shape_path = "/tests/data/shapes/domy.shp"
 raster = Raster\
             .read\
             .format("shp")\
-            .load()
+            .load(shape_path)
 raster.show()
 ```
 
