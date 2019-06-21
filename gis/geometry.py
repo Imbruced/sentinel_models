@@ -5,7 +5,7 @@ from typing import List
 
 import attr
 import geopandas as gpd
-
+import pandas
 
 from gis.geometry_operations import count_delta
 from validators.validators import IsNumeric, WktValidator
@@ -28,7 +28,59 @@ def lazy_property(fn):
 
 
 @attr.s
-class GeometryFrame(ABC):
+class DataFrameShower:
+    MARGIN = 3
+    TRUNCATE_SIZE = 30
+    data_frame = attr.ib(type=pandas.DataFrame)
+
+    def show(self, limit=5, truncate=True):
+        print(self.__create_string(limit, truncate))
+
+    def __create_string(self, limit, truncate):
+        columns_length = self.__find_max_length(limit, truncate)
+        lines = list()
+        lines.append(self.__prepare_row_string(self.data_frame.columns, columns_length))
+        limited_data = self.data_frame.head(limit).values.tolist()
+
+        for row in limited_data:
+            lines.append(self.__prepare_row_string(row, columns_length))
+        dashes = "-" * lines[0].__len__()
+
+        return dashes + "\n" + f"\n{dashes}\n".join(lines) + "\n" + dashes
+
+    @staticmethod
+    def __prepare_row_string(row, length_rows):
+        rw = []
+        for value, length in zip(row, length_rows):
+            missing_length = length - len(str(value))
+            if missing_length == 0:
+                left_add = ""
+                right_add = ""
+            elif missing_length % 2 == 0:
+                left_add = int(missing_length/2) * " "
+                right_add = int(missing_length/2) * " "
+
+            else:
+                left_add = (int(missing_length / 2) + 1) * " "
+                right_add = (int(missing_length / 2)) * " "
+
+            rw.append(DataFrameShower.MARGIN * " " + left_add + f"{str(value)[:length]}" + DataFrameShower.MARGIN * " " + right_add)
+
+        return "|" + "|".join(rw) + "|"
+
+    def __find_max_length(self, limit, truncate):
+        maximums = []
+        for col in self.data_frame.columns:
+            max_length = self.data_frame.head(limit)[col].apply(lambda x: str(x).__len__()).max()
+            if truncate:
+                maximums.append(min(max_length, self.TRUNCATE_SIZE)+self.MARGIN*2)
+            else:
+                maximums.append(max_length + self.MARGIN * 2)
+        return maximums
+
+
+@attr.s
+class GeometryFrame:
 
     frame = attr.ib()
     geometry_column = attr.ib()
@@ -62,6 +114,7 @@ class GeometryFrame(ABC):
         geometry = gpd.read_file(path, driver=driver)
         GeoFrame = cls(geometry, "geom")
         GeoFrame.crs = geometry.crs["init"]
+
         return GeoFrame
 
     def union(self, attribute):
@@ -84,6 +137,14 @@ class GeometryFrame(ABC):
             assert str(list(set(self.frame.type))[0]) + "Frame" == self.type
         except AssertionError:
             raise GeometryTypeError("Your input geometry type is incorrect")
+
+    def show(self, limit, truncate):
+        """TODO add method of showing which spark has"""
+        DataFrameShower(self.frame).show(limit, truncate)
+
+    def plot(self):
+        """TODO add ploting mechanism for geodatframe"""
+        pass
 
 
 class PointFrame(GeometryFrame):
@@ -218,6 +279,21 @@ class Extent:
         point_b = Point(*coordinates[2:])
 
         return cls(point_a, point_b, crs)
+
+    def expand(self, dx, dy):
+        ld = self.left_down.translate(-dx, -dy)
+        ru = self.right_up.translate(dx, dy)
+
+        return Extent(ld, ru)
+
+    def expand_percentage(self, percent_x, percent_y):
+        return self.expand(int(self.dx*percent_x), int(self.dy*percent_y))
+
+    def expand_percentage_equally(self, percent):
+        return self.expand_percentage(percent, percent)
+
+    def expand_equally(self, value):
+        return self.expand(value, value)
 
 
 def cast_float(string: str):
