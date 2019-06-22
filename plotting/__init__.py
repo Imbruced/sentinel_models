@@ -1,3 +1,3 @@
-from plotting.plotting import ImagePlot
+from plotting.plotting import ImagePlot, SubPlots
 
-__all__ = [ImagePlot]
+__all__ = [ImagePlot, SubPlots]

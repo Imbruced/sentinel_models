@@ -5,7 +5,7 @@ import gdal
 
 from exceptions import OptionNotAvailableException
 from exceptions.exceptions import FormatNotAvailable
-from gis.io_abstract import ClsFinder, DefaultOptionRead
+from gis.io_abstract import DefaultOptionRead
 from gis.image_data import Raster
 from gis.image_data import ImageReader
 from gis.image_data import ImageWriter

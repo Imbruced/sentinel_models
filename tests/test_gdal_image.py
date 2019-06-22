@@ -11,7 +11,6 @@ from gis.io_abstract import ClsFinder, DefaultOptionRead
 from gis.raster_components import Pixel
 from logs import logger
 from exceptions import OptionNotAvailableException
-from plotting import ImagePlot
 
 TEST_IMAGE_PATH = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pictures\\buildings.tif"
 
@@ -215,5 +214,14 @@ class TestImageDataModule(TestCase):
             .format("shp") \
             .options(all_unique="True") \
             .load(shape_path)
-        self.assertEqual(np.unique(raster.array).tolist(), list(range(0, 89)))
+        self.assertEqual(np.unique(raster.array).tolist(), list(range(0, 90)))
+
+    def test_load_bigger_shapefile_test_exception(self):
+        path = "D:\\master_thesis\\data\\geometry\\features\\crops.shp"
+        with self.assertRaises(ValueError):
+            Raster \
+                .read \
+                .format("shp") \
+                .load(path) \
+                .show()
 

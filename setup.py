@@ -7,6 +7,6 @@ setup(
     url='https://gitlab.com/pkocinski001/master_module',
     author='Pawel Kocinski',
     licence='MIT',
-    packages=['tests', 'gis'],
+    packages=['gis'],
     zip_safe=False
 )
