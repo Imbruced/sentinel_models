@@ -1,12 +1,16 @@
 import re
-from abc import ABC
 import os
 from typing import List
 
 import attr
+import folium
 import geopandas as gpd
 import pandas
+from shapely import wkt as wkt_loader
+from shapely.geometry import Point as ShapelyPoint
+from shapely.geometry import Polygon as ShapelyPolygon
 
+from gis.datum import Crs
 from gis.geometry_operations import count_delta
 from validators.validators import IsNumeric, WktValidator
 from exceptions.exceptions import GeometryCollectionError
@@ -29,8 +33,8 @@ def lazy_property(fn):
 
 @attr.s
 class DataFrameShower:
-    MARGIN = 3
-    TRUNCATE_SIZE = 30
+    MARGIN = 2
+    TRUNCATE_SIZE = 20
     data_frame = attr.ib(type=pandas.DataFrame)
 
     def show(self, limit=5, truncate=True):
@@ -117,6 +121,13 @@ class GeometryFrame:
 
         return GeoFrame
 
+    def transform(self, crs):
+        return self.__class__(
+            self.frame.to_crs({"init": crs}),
+            crs=crs,
+            geometry_column=self.geometry_column
+        )
+
     def union(self, attribute):
         dissolved = self.frame.dissolve(by=attribute, aggfunc='sum')
         geoframe = self.__class__(dissolved, "geometry")
@@ -141,8 +152,37 @@ class GeometryFrame:
     def show(self, limit=5, truncate=True):
         DataFrameShower(self.frame).show(limit, truncate)
 
-    def plot(self):
-        """TODO add ploting mechanism for geodatframe"""
+    def plot(self, interactive=False, **kwargs):
+        if interactive:
+            return InteractiveGeometryPlotter(self).plot(**kwargs)
+        else:
+            self.frame.plot(**kwargs)
+
+    def head(self, limit=5):
+        return self.frame.head(limit)
+
+
+@attr.s
+class InteractiveGeometryPlotter:
+    gdf = attr.ib(type=GeometryFrame)
+
+    def plot(self, **kwargs):
+        limit = kwargs.get("limit", 100)
+        if self.gdf.frame.shape[0] >= 1:
+            transformed_frame = self.gdf.transform("epsg:4326")
+            first_polygon = transformed_frame.frame["geometry"].head(1).values[0]
+            centroid = first_polygon.centroid
+            coordinates = [centroid.y, centroid.x]
+        else:
+            coordinates = [40.7, -74]
+
+        m = folium.Map(coordinates, **kwargs)
+
+        folium.GeoJson(self.gdf.frame.iloc[:limit]).add_to(m)
+
+        return m
+
+    def __prepare_data_for_plotting(self):
         pass
 
 
@@ -166,22 +206,25 @@ class PolygonFrame(GeometryFrame):
 
 
 @attr.s
-class Point:
+class Point(ShapelyPoint):
+    TYPE = "Point"
+    _x = attr.ib(default=0, validator=[IsNumeric()])
+    _y = attr.ib(default=0, validator=[IsNumeric()])
 
-    x = attr.ib(default=0, validator=[IsNumeric()])
-    y = attr.ib(default=0, validator=[IsNumeric()])
+    def __attrs_post_init__(self):
+        super().__init__(self._x, self._y)
 
     def __str__(self):
         return f"Point({self.x} {self.y})"
 
-    def translate(self, x, y):
+    def translate(self, dx, dy):
         """
         Translates points coordinates by x and y value
         :param x: number of units to move along x axis
         :param y: number of units to move along y axis
         :return: new Point with translated coordinates
         """
-        return Point(self.x + x, self.y + y)
+        return Point(self.x + dx, self.y + dy)
 
 
 @attr.s
@@ -210,7 +253,28 @@ class PointCollection:
 
 
 @attr.s
+class Polygon(ShapelyPolygon):
+    NAME = "Polygon"
+    coordinates = attr.ib(type=List[List[float]])
+    crs = attr.ib(default=Crs("epsg:4326"))
+
+    def __attrs_post_init__(self):
+        super().__init__(self.coordinates)
+
+    @classmethod
+    def from_wkt(cls, wkt, crs):
+        polygon = wkt_loader.loads(wkt)
+        try:
+            assert polygon.type == cls.NAME
+        except AssertionError:
+            raise TypeError(f"wkt is type {polygon.type}")
+
+        return cls(polygon.exterior.coords, crs)
+
+
+@attr.s
 class Line:
+    """TODO handle inheritance from Shapely LineString"""
     start = attr.ib()
     end = attr.ib()
 
@@ -222,11 +286,11 @@ class Line:
 @attr.s
 class Origin(Point):
 
-    x = attr.ib(default=0)
-    y = attr.ib(default=0)
+    _x = attr.ib(default=0)
+    _y = attr.ib(default=0)
 
     def __attr__post_init__(self):
-        super().__init__(self.x, self.y)
+        super().__init__(self._x, self._y)
 
 
 @attr.s
@@ -320,6 +384,13 @@ class Wkt:
 
     wkt_string = attr.ib(type=str, validator=WktValidator())
     crs = attr.ib(default="local")
+
+    def __attrs_post_init__(self):
+        self.__geom = wkt_loader.loads(self.wkt_string)
+        self.__type = self.__geom.type
+    #
+    # def to_geometry(self):
+    #     return shapely.wkt.loads(self.wkt_string)
 
     def __split(self):
         return re.findall(r"(-*\d+\.*\d*) (-*\d+\.*\d*)", self.wkt_string)
