@@ -138,4 +138,23 @@ class DefaultOptionRead:
             }
         )
 
+    @classmethod
+    def postgis_geom(cls):
+        return Options(
+            {
+                "format": "postgis_geom",
+                "type": None,
+                "crs": "4326",
+                "extent": None,
+                "pixel": None,
+                "value": 1,
+                "all_unique": "False",
+                "color_column": None,
+                "schema": "public",
+                "host": "localhost",
+                "user": "postgres",
+                "password": "postgres"
+            }
+        )
+
 
