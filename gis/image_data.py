@@ -10,7 +10,7 @@ import numpy as np
 
 from gis.decorators import classproperty
 from gis.io_abstract import IoHandler, DefaultOptionWrite
-from gis.geometry import Extent, Point, Origin, Wkt, GeometryFrame
+from gis.geometry import Extent, Point, Origin, Wkt, GeometryFrame, lazy_property
 from gis.raster_components import Pixel
 from plotting import ImagePlot
 from validators.validators import IsImageFile
@@ -70,7 +70,8 @@ class GdalImage:
     def in_memory(cls, x_shape, y_shape):
         memory_ob = gdal.GetDriverByName('MEM')
         raster = memory_ob.Create('', x_shape, y_shape, 1, gdal.GDT_Byte)
-
+        if raster is None:
+            raise ValueError("Your image is to huge, please increase pixel size, by using pixel option in loading options, example pixel=Pixel(20.0, 20.0)")
         return cls(raster)
 
     @classmethod
@@ -81,7 +82,7 @@ class GdalImage:
                             Point((new_extent.origin.x + new_extent.dx) * pixel.x,
                                   (new_extent.origin.y + new_extent.dy) * pixel.y))
 
-        raster = cls.in_memory(new_extent.dx, new_extent.dy)
+        raster = cls.in_memory(int(new_extent.dx), int(new_extent.dy))
 
         transformed_raster = raster.transform(extent.origin, pixel)
 
@@ -189,9 +190,20 @@ class Raster:
     def array(self):
         return self.ref.array
 
-    def show(self):
-        plotter = ImagePlot(self.array[:, :, 0])
+    def show(self, true_color=False):
+        if not true_color:
+            plotter = ImagePlot(self.array[:, :, 0])
+        else:
+            plotter = ImagePlot(self.array[:, :, :3])
         plotter.plot()
+
+    @lazy_property
+    def extent(self):
+        return self.ref.extent
+
+    @lazy_property
+    def shape(self):
+        return self.array.shape
 
 
 @attr.s
@@ -441,10 +453,3 @@ class PostgisGeomImageReader(RasterFromGeometryReader):
 
     def load(self):
         pass
-
-wkt = "Polygon((110.0 105.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 105.0))"
-raster = Raster\
-            .read\
-            .format("wkt")\
-            .load(wkt)
-raster.show()
