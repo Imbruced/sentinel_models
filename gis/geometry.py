@@ -369,6 +369,53 @@ class Extent:
         coordinates_text = ", ".join([f"{el.x} {el.y}" for el in coordinates])
         return f"POLYGON(({coordinates_text}))"
 
+    def divide_dy(self, tile_size):
+        tiles_number_dy = int(float(self.dy) // float(tile_size))
+        if int(float(self.dy) // float(tile_size)) == float(self.dy) / float(tile_size):
+            extents = []
+        else:
+            extents = [Extent(
+                self.left_down.translate(0, tiles_number_dy*tile_size),
+                self.left_down.translate(self.dx, self.dy),
+                self.crs
+            )]
+
+        for tile in range(tiles_number_dy):
+            extents.append(
+                Extent(
+                    self.left_down.translate(0, (tiles_number_dy-tile-1)*tile_size),
+                    self.left_down.translate(self.dx, (tiles_number_dy-tile)*tile_size),
+                    crs=self.crs)
+            )
+        return extents
+
+    def divide_dx(self, tile_size):
+        tiles_number_dy = int(float(self.dx) // float(tile_size))
+        if int(float(self.dx) // float(tile_size)) == float(self.dx) / float(tile_size):
+            extents = []
+        else:
+            extents = [Extent(
+                self.left_down.translate(tiles_number_dy * tile_size, 0),
+                self.left_down.translate(self.dx, self.dy),
+                self.crs
+            )]
+
+        for tile in range(tiles_number_dy):
+            extents.append(
+                Extent(
+                    self.left_down.translate((tiles_number_dy - tile - 1) * tile_size, 0),
+                    self.left_down.translate((tiles_number_dy - tile) * tile_size, self.dy),
+                    crs=self.crs)
+            )
+        return extents
+
+    def divide(self, dx=None, dy=None):
+        if any(dx, dy):
+            pass
+        else:
+            raise AttributeError("You have to pass at least one argument dx or dy")
+        pass
+
 
 def cast_float(string: str):
     try:

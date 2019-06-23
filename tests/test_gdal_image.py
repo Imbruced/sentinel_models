@@ -342,4 +342,9 @@ class TestImageDataModule(TestCase):
             .save("C:\\Users\\Pawel\\Desktop\\sentinel_models\\data\\test1.tif")
 
 
-
+    def test_extent_split(self):
+        extent = Extent.from_coordinates([20.0, 20.0, 50.0, 50.0], "epsg:2180").divide_dy(5.1)
+        for ex in extent:
+            divide_x = ex.divide_dx(5.1)
+            for dvx in divide_x:
+                print(dvx.to_wkt())
