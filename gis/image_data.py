@@ -8,13 +8,14 @@ import attr
 import gdal
 import numpy as np
 
+from gis.crs import Crs
 from gis.decorators import classproperty
 from gis.io_abstract import IoHandler, DefaultOptionWrite
 from gis.geometry import Extent, Point, Origin, Wkt, GeometryFrame, lazy_property
 from gis.raster_components import Pixel
 from plotting import ImagePlot
 from validators.validators import IsImageFile
-from exceptions.exceptions import FormatNotAvailable, OptionNotAvailableException, DimensionException
+from exceptions.exceptions import FormatNotAvailable, OptionNotAvailableException, DimensionException, CrsException
 from gis.io_abstract import DefaultOptionRead
 from gis.raster_components import Options, ReferencedArray
 
@@ -55,7 +56,7 @@ class GdalImage:
         self.band_number = self.ds.RasterCount
 
     @classmethod
-    def load_from_file(cls, path: str, crs: str):
+    def load_from_file(cls, path: str, crs=None):
         """
         class method which based on path returns GdalImage object,
         It validates path location and its format
@@ -63,16 +64,19 @@ class GdalImage:
         """
         file = ImageFile(path)
         ds: gdal.Dataset = gdal.Open(file.path)
-
-        return cls(ds, path, crs)
+        if crs is None:
+            projection = ds.GetProjection()
+            srs = osr.SpatialReference(wkt=projection)
+            crs = srs.GetAttrValue('AUTHORITY', 0).lower() + ":" + srs.GetAttrValue('AUTHORITY', 1)
+        return cls(ds, path, Crs(crs))
 
     @classmethod
-    def in_memory(cls, x_shape, y_shape):
+    def in_memory(cls, x_shape, y_shape, crs=Crs("epsg:4326")):
         memory_ob = gdal.GetDriverByName('MEM')
         raster = memory_ob.Create('', x_shape, y_shape, 1, gdal.GDT_Byte)
         if raster is None:
             raise ValueError("Your image is to huge, please increase pixel size, by using pixel option in loading options, example pixel=Pixel(20.0, 20.0)")
-        return cls(raster)
+        return cls(raster, crs=crs)
 
     @classmethod
     def from_extent(cls, extent, pixel):
@@ -82,7 +86,7 @@ class GdalImage:
                             Point((new_extent.origin.x + new_extent.dx) * pixel.x,
                                   (new_extent.origin.y + new_extent.dy) * pixel.y))
 
-        raster = cls.in_memory(int(new_extent.dx), int(new_extent.dy))
+        raster = cls.in_memory(int(new_extent.dx), int(new_extent.dy), crs=extent.crs)
 
         transformed_raster = raster.transform(extent.origin, pixel)
 
@@ -127,7 +131,7 @@ class GdalImage:
         left_top_corner_x, pixel_size_x, _, left_top_corner_y, _, pixel_size_y = self.ds.GetGeoTransform()
         self.ds.SetProjection('LOCAL_CS["arbitrary"]')
 
-        return GdalImage(self.ds)
+        return GdalImage(self.ds, crs=self.crs)
 
     def insert_polygon(self, wkt, value):
         srs = osr.SpatialReference('LOCAL_CS["arbitrary"]')
@@ -146,14 +150,14 @@ class RasterCreator:
 
     def empty_raster(self, extent: Extent, pixel: Pixel):
         transformed_raster, extent_new = GdalImage.from_extent(extent, pixel)
-        return self.to_raster(transformed_raster, pixel, crs="local")
+        return self.to_raster(transformed_raster, pixel)
 
     @staticmethod
-    def to_raster(gdal_raster, pixel, crs="2180"):
+    def to_raster(gdal_raster, pixel):
         array = gdal_raster.ds.ReadAsArray()
         reshaped_array = array.reshape(*array.shape, 1)
         ref = ReferencedArray(array=reshaped_array,
-                              crs=crs,
+                              crs=gdal_raster.crs,
                               extent=gdal_raster.extent,
                               shape=array.shape[:2])
         raster_ob = Raster(pixel=pixel, ref=ref)
@@ -161,11 +165,74 @@ class RasterCreator:
         return raster_ob
 
 
-@attr.s
-class Raster:
-    pixel = attr.ib()
-    ref = attr.ib()
+class Raster(np.ndarray):
     raster_creator = RasterCreator()
+
+    def __new__(cls, pixel, ref):
+        obj = np.asarray(ref.array).view(cls)
+        obj.pixel = pixel
+        obj.ref = ref
+        return obj
+
+    def __array_finalize__(self, obj):
+        if obj is None:
+            return
+        self.pixel = getattr(obj, 'pixel', None)
+        self.ref = getattr(obj, 'ref', None)
+
+    def __array_wrap__(self, out_arr, context=None):
+        return super().__array_wrap__(self, out_arr, context)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        args = []
+        in_no = []
+        for i, input_ in enumerate(inputs):
+            if isinstance(input_, self.__class__):
+                in_no.append(i)
+                args.append(input_.view(np.ndarray))
+            else:
+                args.append(input_)
+
+        outputs = kwargs.pop('out', None)
+        out_no = []
+        if outputs:
+            out_args = []
+            for j, output in enumerate(outputs):
+                if isinstance(output, self.__class__):
+                    out_no.append(j)
+                    out_args.append(output.view(np.ndarray))
+                else:
+                    out_args.append(output)
+            kwargs['out'] = tuple(out_args)
+        else:
+            outputs = (None,) * ufunc.nout
+
+        info = {}
+        if in_no:
+            info['inputs'] = in_no
+        if out_no:
+            info['outputs'] = out_no
+
+        results = super().__array_ufunc__(ufunc, method,
+                                                 *args, **kwargs)
+        if results is NotImplemented:
+            return NotImplemented
+
+        if method == 'at':
+            if isinstance(inputs[0], self.__class__):
+                inputs[0].info = info
+            return
+
+        if ufunc.nout == 1:
+            results = (results,)
+
+        results = tuple((np.asarray(result).view(self.__class__)
+                         if output is None else output)
+                        for result, output in zip(results, outputs))
+        if results and isinstance(results[0], self.__class__):
+            results[0].info = info
+
+        return results[0] if len(results) == 1 else results
 
     @classproperty
     def read(self):
@@ -176,7 +243,7 @@ class Raster:
         return ImageWriter(data=self)
 
     @classmethod
-    def from_array(cls, array, pixel, extent=Extent(Point(0, 0), Point(0, 0))):
+    def from_array(cls, array, pixel, extent=Extent(Point(0, 0), Point(1, 1))):
         array_copy = array
         ref = ReferencedArray(array=array_copy, crs=extent.crs, extent=extent, shape=array.shape[:2])
         raster_ob = cls(pixel, ref)
@@ -192,9 +259,9 @@ class Raster:
 
     def show(self, true_color=False):
         if not true_color:
-            plotter = ImagePlot(self.array[:, :, 0])
+            plotter = ImagePlot(self[:, :, 0])
         else:
-            plotter = ImagePlot(self.array[:, :, :3])
+            plotter = ImagePlot(self[:, :, :3])
         plotter.plot()
 
     @lazy_property
@@ -202,8 +269,8 @@ class Raster:
         return self.ref.extent
 
     @lazy_property
-    def shape(self):
-        return self.array.shape
+    def crs(self):
+        return self.extent.crs
 
 
 @attr.s
@@ -265,18 +332,15 @@ class GeoTiffImageWriter:
     io_options = attr.ib()
 
     def save(self, path: str):
-        array = self.data.array[:, :, 0]
         drv = gdal.GetDriverByName("GTiff")
-        raster = self.data
-        band_number = raster.array.shape[2]
-        array = raster.array
+        band_number = self.data.shape[2]
         dtype = self.io_options["dtype"]
 
-        ds = drv.Create(path, array.shape[1], array.shape[0], band_number, dtype)
+        ds = drv.Create(path, self.data.shape[1], self.data.shape[0], band_number, dtype)
         gdal_raster = GdalImage(ds, "local")
         transformed_ds = gdal_raster.transform(gdal_raster.extent.origin, gdal_raster.pixel)
-        for band in range(array.shape[2]):
-            transformed_ds.ds.GetRasterBand(band + 1).WriteArray(array[:, :, band])
+        for band in range(self.data.shape[2]):
+            transformed_ds.ds.GetRasterBand(band + 1).WriteArray(self.data[:, :, band])
 
 
 @attr.s
@@ -286,7 +350,7 @@ class PngImageWriter:
     io_options = attr.ib()
 
     def save(self, path: str):
-        im = Image.fromarray(self.data.array[:, :, 0])
+        im = Image.fromarray(self.data[:, :, 0])
         im.save(path)
 
 
@@ -372,6 +436,11 @@ class RasterFromGeometryReader(ABC):
             "extent",
             default_extent.expand_percentage_equally(0.3)
         )
+        try:
+            assert extent.crs == default_extent.crs
+        except AssertionError:
+            raise CrsException("Crs from extent does not match with Crs specified. Please make changes.")
+
         pixel: Pixel = options.get("pixel", Pixel(0.5, 0.5))
         gdal_in_memory, extent_new = GdalImage.from_extent(
             extent, pixel
@@ -380,7 +449,7 @@ class RasterFromGeometryReader(ABC):
         return gdal_in_memory
 
     @classmethod
-    def _find_extent_from_multiple_wkt(cls, wkt_value_list):
+    def _find_extent_from_multiple_wkt(cls, wkt_value_list, crs=Crs("epsg:4326")):
         bottom_corners = [el[0].extent.left_down for el in wkt_value_list]
         top_corners = [el[0].extent.right_up for el in wkt_value_list]
 
@@ -391,7 +460,8 @@ class RasterFromGeometryReader(ABC):
 
         extent = Extent(
             Point(min_x, min_y),
-            Point(max_x, max_y)
+            Point(max_x, max_y),
+            crs=crs
         )
         return extent
 
@@ -402,11 +472,14 @@ class ShapeImageReader(RasterFromGeometryReader):
 
     def load(self):
         geoframe = GeometryFrame.from_file(self.path).to_wkt()
+
+        crs = self.io_options.get("crs", geoframe.crs)
+
         gdf = self.__add_value_column(geoframe)
 
         wkt_value_list = [[Wkt(el[0]), el[1]] for el in gdf[["wkt", "raster_value"]].values.tolist()]
 
-        extent = self._find_extent_from_multiple_wkt(wkt_value_list)
+        extent = self._find_extent_from_multiple_wkt(wkt_value_list, crs=crs)
 
         gdal_raster = self.wkt_to_gdal_raster(extent, self.io_options)
 

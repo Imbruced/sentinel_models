@@ -10,7 +10,7 @@ from shapely import wkt as wkt_loader
 from shapely.geometry import Point as ShapelyPoint
 from shapely.geometry import Polygon as ShapelyPolygon
 
-from gis.datum import Crs
+from gis.crs import Crs
 from gis.geometry_operations import count_delta
 from validators.validators import IsNumeric, WktValidator
 from exceptions.exceptions import GeometryCollectionError
@@ -88,7 +88,7 @@ class GeometryFrame:
 
     frame = attr.ib()
     geometry_column = attr.ib()
-    crs = attr.ib(default="local", validator=[])
+    crs = attr.ib(default=Crs("epsg:4326"))
 
     def __attr__post_init__(self):
         self.type = self.__class__.__name__
@@ -104,7 +104,7 @@ class GeometryFrame:
         frame_copy = self.frame.copy()
         frame_copy["wkt"] = frame_copy["geometry"].apply(lambda x: x.wkt)
 
-        return self.__class__(frame_copy, "geometry")
+        return self.__class__(frame_copy, "geometry", crs=self.crs)
 
     @classmethod
     def from_file(cls, path, driver="ESRI Shapefile"):
@@ -116,8 +116,7 @@ class GeometryFrame:
         """
 
         geometry = gpd.read_file(path, driver=driver)
-        GeoFrame = cls(geometry, "geom")
-        GeoFrame.crs = geometry.crs["init"]
+        GeoFrame = cls(geometry, "geom", Crs(geometry.crs["init"]))
 
         return GeoFrame
 
@@ -298,7 +297,7 @@ class Extent:
 
     left_down = attr.ib(default=Point(0, 0))
     right_up = attr.ib(default=Point(1, 1))
-    crs = attr.ib(default="local")
+    crs = attr.ib(default=Crs("epsg:4326"))
     origin = attr.ib(init=False)
     dx = attr.ib(init=False)
     dy = attr.ib(init=False)
@@ -347,7 +346,7 @@ class Extent:
         ld = self.left_down.translate(-dx, -dy)
         ru = self.right_up.translate(dx, dy)
 
-        return Extent(ld, ru)
+        return Extent(ld, ru, crs=self.crs)
 
     def expand_percentage(self, percent_x, percent_y):
         return self.expand(int(self.dx*percent_x), int(self.dy*percent_y))

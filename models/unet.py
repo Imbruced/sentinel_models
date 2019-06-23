@@ -6,9 +6,7 @@ from keras.layers.merge import concatenate
 from keras.models import Model
 from keras.layers import Input
 
-from models.abstract import ModelConfig
 from models.abstract import AbstractModel
-from models.abstract import ModelData
 
 
 def conv2d_block(input_tensor, n_filters, kernel_size, batchnorm):
@@ -71,23 +69,6 @@ def get_unet(input_img, n_filters, dropout, batchnorm):
     outputs = Conv2D(1, (1, 1), activation='sigmoid')(c9)
     model = Model(inputs=[input_img], outputs=[outputs])
     return model
-
-
-@attr.s
-class UnetConfig(ModelConfig):
-
-    input_size = attr.ib(default=(128, 128, 13))
-    filters = attr.ib(default=16)
-
-
-@attr.s
-class UnetData(ModelData):
-    """
-    TODO
-    add validators
-    """
-    test_size = attr.ib(default=0.1)
-    random_state = attr.ib(default=2018)
 
 
 @attr.s

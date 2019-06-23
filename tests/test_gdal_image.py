@@ -4,11 +4,13 @@ from unittest import TestCase
 import gdal
 import numpy as np
 
-from exceptions.exceptions import FormatNotAvailable
-from gis.geometry import Origin
+from exceptions.exceptions import FormatNotAvailable, CrsException
+from gis.data_prep import RasterData
+from gis.geometry import Origin, Wkt, Point, Extent, GeometryFrame, Polygon, InteractiveGeometryPlotter
 from gis.image_data import GdalImage, Raster, ImageWriter, ImageReader
 from gis.io_abstract import ClsFinder, DefaultOptionRead
 from gis.raster_components import Pixel
+from gis.crs import Crs
 from logs import logger
 from exceptions import OptionNotAvailableException
 
@@ -20,6 +22,11 @@ class TestImageDataModule(TestCase):
     empty_raster = Raster.empty()
     image_writer = ImageWriter(data=empty_raster)
     path = os.path.join(os.getcwd(), "test_data")
+
+    POLYGON = "Polygon((110.0 110.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 110.0))"
+    LINESTRING = "LINESTRING(-71.160281 42.258729,-71.160837 42.259113,-71.161144 42.25932)"
+    POINT = "POINT(-71 42)"
+    shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
 
     def test_gdal_image_from_file(self):
         gd = GdalImage.load_from_file(TEST_IMAGE_PATH, "epsg:4326")
@@ -185,35 +192,30 @@ class TestImageDataModule(TestCase):
         # raster.show()
 
     def test_reading_raster_from_shapefile_value_baased_on_column(self):
-        shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
-
         raster = Raster \
             .read \
             .format("shp") \
             .options(color_column="cls") \
-            .load(shape_path)
+            .load(self.shape_path)
         self.assertEqual(np.unique(raster.array).tolist(), [0, 1, 2, 3, 4, 5])
 
         # raster.show()
 
     def test_reading_raster_from_shapefile_value_the_same(self):
-        shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
-
         raster = Raster \
             .read \
             .format("shp") \
-            .load(shape_path)
+            .load(self.shape_path)
         self.assertEqual(np.unique(raster.array).tolist(), [0, 1])
         # raster.show()
 
     def test_reading_raster_from_shapefile_all_values_different(self):
-        shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
 
         raster = Raster \
             .read \
             .format("shp") \
             .options(all_unique="True") \
-            .load(shape_path)
+            .load(self.shape_path)
         self.assertEqual(np.unique(raster.array).tolist(), list(range(0, 90)))
 
     def test_load_bigger_shapefile_test_exception(self):
@@ -224,4 +226,120 @@ class TestImageDataModule(TestCase):
                 .format("shp") \
                 .load(path) \
                 .show()
+
+    def test_wkt_instance(self):
+        wkt = Wkt("Polygon((110.0 110.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 110.0))")
+
+    def test_split_coordinates(self):
+        wkt1 = Wkt(self.POLYGON)
+        wkt2 = Wkt(self.POINT)
+        wkt3 = Wkt(self.LINESTRING)
+
+        self.assertEqual(
+            wkt1.coordinates,
+            [
+                Point(x[0], x[1]) for x in
+                [[110.0, 110.0], [110.0, 120.0], [120.0, 120.0], [120.0, 110.0], [110.0, 110.0]]
+             ]
+        )
+        self.assertEqual(
+            wkt2.coordinates,
+            [Point(-71.0, 42.0)]
+        )
+
+        self.assertEqual(
+            wkt3.coordinates,
+            [
+                Point(x[0], x[1]) for x in
+                [[-71.160281, 42.258729], [-71.160837, 42.259113], [-71.161144, 42.25932]]
+            ]
+        )
+
+    def test_extent_wkt(self):
+        wkt1 = Wkt(self.POLYGON)
+        self.assertEqual(
+            wkt1.extent,
+            Extent(Point(x=110.0, y=110.0), Point(x=120.0, y=120.0))
+        )
+
+    def test_showing_geoframe_like_spark(self):
+
+        frame = GeometryFrame.from_file(self.shape_path).show(2, True)
+
+    def test_extent_to_wkt(self):
+        extent = Extent()
+        self.assertEqual(extent.to_wkt(), "POLYGON((0.0 0.0, 0.0 1.0, 1.0 1.0, 1.0 0.0, 0.0 0.0))")
+
+    def test_point(self):
+        p = Point(21.0, 52.0)
+
+    def test_polygon(self):
+        coordinates = [[110.0, 110.0], [110.0, 120.0], [120.0, 120.0], [120.0, 110.0], [110.0, 110.0]]
+        from shapely.geometry import Polygon as ShapelyPolygon
+        poly = ShapelyPolygon(coordinates)
+
+    def test_polygon_from_wkt(self):
+        poly = Polygon.from_wkt("POLYGON((0.0 0.0, 0.0 1.0, 1.0 1.0, 1.0 0.0, 0.0 0.0))", Crs("local"))
+        self.assertEqual(poly.area, 1.0)
+
+    def test_interactive_plot(self):
+        gdf = GeometryFrame.from_file(self.shape_path)
+        InteractiveGeometryPlotter(gdf).plot()
+
+    def test_gdf_interactive_plot(self):
+        gdf = GeometryFrame.from_file(self.shape_path)
+        gdf.plot(interactive=True)
+
+    def test_extent_comparison(self):
+        extent1 = Extent.from_coordinates([100.0, 100.0, 120.0, 120.0], crs=Crs("epsg:4326"))
+        extent2 = Extent.from_coordinates([100.00, 100.00, 120.00, 120.00], crs=Crs("epsg:4326"))
+        assert extent1 == extent2
+
+    def test_geometry_frame_from_file(self):
+        gdf = GeometryFrame.from_file(self.shape_path)
+        self.assertEqual(gdf.crs, Crs("epsg:26917"))
+
+    def test_different_crs_and_extent_crs(self):
+
+        with self.assertRaises(CrsException):
+
+            image = Raster \
+                .read \
+                .options(crs=Crs("epsg:4326"))\
+                .format("geotiff") \
+                .load(TEST_IMAGE_PATH)
+
+            label = Raster \
+                .read \
+                .format("shp") \
+                .options(
+                    extent=image.extent,
+                    crs=Crs("epsg:2008"),
+                    pixel=image.pixel
+                ) \
+                .load(self.shape_path)
+
+    def test_creating_unet_images(self):
+        image = Raster \
+            .read \
+            .format("geotiff") \
+            .load(TEST_IMAGE_PATH)
+
+        label: Raster = Raster \
+            .read \
+            .format("shp") \
+            .options(
+                pixel=image.pixel,
+                extent=image.extent
+            ) \
+            .load(self.shape_path)
+
+        raster_data = RasterData(image=image, label=label)
+        images = raster_data.prepare_unet_images([128, 128])
+        # print(images.x_train[1].shape)
+        images.x_train[1].write\
+            .format("geotiff")\
+            .save("C:\\Users\\Pawel\\Desktop\\sentinel_models\\data\\test1.tif")
+
+
 

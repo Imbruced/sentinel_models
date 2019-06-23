@@ -27,23 +27,6 @@ class TrainingConfig(ABC):
 
 
 @attr.s
-class ModelData(ABC):
-    x = attr.ib(type=np.ndarray)
-    y = attr.ib(type=np.ndarray)
-    test_size = attr.ib(default=0.15)
-    random_state = attr.ib(default=2018)
-
-    def __attrs_post_init__(self):
-        self.x_train, self.x_test, self.y_train, self.y_test = train_test_split(
-            self.x,
-            self.y,
-            test_size=self.test_size,
-            random_state=self.random_state
-        )
-        self.number_of_classes = np.unique(self.y)
-
-
-@attr.s
 class EmptyModel(ABC):
     model = attr.ib()
 

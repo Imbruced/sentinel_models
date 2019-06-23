@@ -70,7 +70,8 @@ class DefaultOptionWrite:
         return Options(
             {
                 "format": "geotiff",
-                "dtype":gdal.GDT_Byte
+                "dtype": gdal.GDT_Byte,
+                "crs": None
             }
         )
 
@@ -99,7 +100,7 @@ class DefaultOptionRead:
         return Options(
             {
                 "format": "wkt",
-                "crs": "4326",
+                "crs": None,
                 "pixel": None,
                 "value": 1,
                 "extent": None
@@ -119,7 +120,7 @@ class DefaultOptionRead:
         return Options(
             {
                 "format": "geotiff",
-                "crs": "4326"
+                "crs": None
             }
         )
 
@@ -129,7 +130,7 @@ class DefaultOptionRead:
             {
                 "format": "shp",
                 "type": None,
-                "crs": "4326",
+                "crs": None,
                 "extent": None,
                 "pixel": None,
                 "value": 1,
@@ -144,7 +145,7 @@ class DefaultOptionRead:
             {
                 "format": "postgis_geom",
                 "type": None,
-                "crs": "4326",
+                "crs": None,
                 "extent": None,
                 "pixel": None,
                 "value": 1,
