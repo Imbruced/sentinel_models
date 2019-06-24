@@ -1,20 +1,15 @@
 from abc import ABC
 from typing import List
-import os
 from functools import reduce
 
 import attr
 import numpy as np
-import gdal
-import pandas as pd
 from sklearn.model_selection import train_test_split
 
 from exceptions.exceptions import PixelSizeException, DimensionException
 from gis import Raster
 from gis.raster_components import create_two_dim_chunk
 from gis.raster_components import ArrayShape
-from logs import logger
-from gis import Pixel
 
 
 @attr.s
