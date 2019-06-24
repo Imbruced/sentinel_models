@@ -18,6 +18,10 @@ class Crs(metaclass=ConfigMeta):
     def __str__(self):
         return self.epsg
 
+    @property
+    def code(self):
+        return int(self.epsg.split(":")[1])
+
 
 def load_crs_list():
     crs_list = []

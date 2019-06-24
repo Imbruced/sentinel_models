@@ -4,7 +4,7 @@ import numpy as np
 from logs import logger
 from gis.raster_components import ReferencedArray
 import os
-from gis.raster import Raster
+from gis.image_data import Raster
 
 
 @attr.s

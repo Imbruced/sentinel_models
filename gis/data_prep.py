@@ -14,6 +14,7 @@ from gis import Raster
 from gis.raster_components import create_two_dim_chunk
 from gis.raster_components import ArrayShape
 from logs import logger
+from gis import Pixel
 
 
 @attr.s
@@ -93,16 +94,14 @@ class RasterData:
         x_data = []
         y_data = []
 
-        extent = self.image.extent
-
         removal_f = image_meet_pixel_criteria_based_on_threshold if remove_empty_labels else image_meets_criteria
+        extents = self.image.extent.divide(image_size[0]*self.image.pixel.x, image_size[0]*self.image.pixel.y)
 
-        for img, lbl in zip(chunks_array, chunks_label):
+        for img, lbl, extent in zip(chunks_array, chunks_label, extents):
+            print(extent.to_wkt())
             if removal_f(lbl, image_size, threshold):
-                logger.info(lbl.shape)
-                logger.info(img.shape)
-                x_data.append(img)
-                y_data.append(lbl)
+                x_data.append(Raster.from_array(img, img.pixel, extent))
+                y_data.append(Raster.from_array(lbl, img.pixel, extent))
         return UnetData(x_data, y_data)
 
     def assert_equal_size(self):

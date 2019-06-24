@@ -174,7 +174,6 @@ class InteractiveGeometryPlotter:
             coordinates = [centroid.y, centroid.x]
         else:
             coordinates = [40.7, -74]
-
         m = folium.Map(coordinates, **kwargs)
 
         folium.GeoJson(self.gdf.frame.iloc[:limit]).add_to(m)
@@ -371,49 +370,54 @@ class Extent:
 
     def divide_dy(self, tile_size):
         tiles_number_dy = int(float(self.dy) // float(tile_size))
-        if int(float(self.dy) // float(tile_size)) == float(self.dy) / float(tile_size):
-            extents = []
-        else:
-            extents = [Extent(
-                self.left_down.translate(0, tiles_number_dy*tile_size),
-                self.left_down.translate(self.dx, self.dy),
-                self.crs
-            )]
-
-        for tile in range(tiles_number_dy):
+        extents = []
+        for tile in range(0, tiles_number_dy):
             extents.append(
                 Extent(
-                    self.left_down.translate(0, (tiles_number_dy-tile-1)*tile_size),
-                    self.left_down.translate(self.dx, (tiles_number_dy-tile)*tile_size),
+                    self.right_up.translate(-self.dx, -(tile+1)*tile_size),
+                    self.right_up.translate(0, (-tile) * tile_size),
                     crs=self.crs)
             )
+        if int(float(self.dy) // float(tile_size)) != float(self.dy) / float(tile_size):
+            extents.append(Extent(
+                self.right_up.translate(-self.dx, -self.dy),
+                self.right_up.translate(0, -tiles_number_dy*tile_size),
+                self.crs
+            ))
         return extents
 
     def divide_dx(self, tile_size):
-        tiles_number_dy = int(float(self.dx) // float(tile_size))
-        if int(float(self.dx) // float(tile_size)) == float(self.dx) / float(tile_size):
-            extents = []
-        else:
-            extents = [Extent(
-                self.left_down.translate(tiles_number_dy * tile_size, 0),
-                self.left_down.translate(self.dx, self.dy),
-                self.crs
-            )]
+        tiles_number_dx = int(float(self.dx) // float(tile_size))
+        extents = []
 
-        for tile in range(tiles_number_dy):
+        for tile in range(tiles_number_dx):
             extents.append(
                 Extent(
-                    self.left_down.translate((tiles_number_dy - tile - 1) * tile_size, 0),
-                    self.left_down.translate((tiles_number_dy - tile) * tile_size, self.dy),
+                    self.left_down.translate(tile*tile_size, 0),
+                    self.left_down.translate((tile+1) * tile_size, self.dy),
                     crs=self.crs)
             )
+        if int(float(self.dx) // float(tile_size)) == float(self.dx) / float(tile_size):
+            extents.append(Extent(
+                self.left_down.translate(tiles_number_dx*tile_size, 0),
+                self.left_down.translate(self.dx, self.dy),
+                self.crs
+            ))
+
         return extents
 
-    def divide(self, dx=None, dy=None):
-        if any(dx, dy):
-            pass
+    def divide(self, dx, dy):
+
+        if all([dx, dy]):
+            dy_divided = self.divide_dy(dy)
+            extents = []
+            for dy_tile in dy_divided:
+                dx_divided = dy_tile.divide_dx(dx)
+                for dx_tile in dx_divided:
+                    extents.append(dx_tile)
+            return extents
         else:
-            raise AttributeError("You have to pass at least one argument dx or dy")
+            raise AttributeError("You have to pass all the arguments")
         pass
 
 
