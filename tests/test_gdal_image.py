@@ -416,3 +416,4 @@ class TestImageDataModule(TestCase):
             predicted,
             unet_images.x_test[0]
         ).plot(nrows=1)
+
