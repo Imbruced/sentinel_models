@@ -166,6 +166,15 @@ class RasterCreator:
 
 
 class Raster(np.ndarray):
+    """
+    This class directly inherits from numpy array, so all functionality from numpy array is available,
+    In addition this class preserve Geospatial information. It can be written to geotiff format with
+    geo reference. After predicting raster can be saved with georeference.
+    It allows to load data from image data types such as GeoTiff and PNG, but also it have possibility
+    to load the data from geometry fromats like ShapeFile, GeoJSon, Wkt and convert them to raster format
+    with preserving geospatial information. It's important that easly it can be aligned into existing raster.
+    It is important when creating label and image dataset for andy CNN based model.
+    """
     raster_creator = RasterCreator()
 
     def __new__(cls, pixel, ref):
@@ -235,11 +244,50 @@ class Raster(np.ndarray):
         return results[0] if len(results) == 1 else results
 
     @classproperty
-    def read(self):
+    def read(self) -> 'ImageReader':
+        """
+        This function returns ImageReader which allows you to read the data from various formats in
+        Apache Spark style, Example:
+        Raster\
+            .read\
+            .format("shp") \
+            .options(pixel=Pixel(1.0, 1.0))
+            .load("file_location")
+        The shape file will be loaded from path specified with pixel 1.0 1.0 in size
+        To align to exsiting raster you can write the code in below example
+        image = Raster\
+                    .read\
+                    .format("geotiff")\
+                    .load("image_path")
+        label = Raster\
+                    .read\
+                    .format("shp")\
+                    .options(
+                            pixel=image.pixel,
+                            extent=image.extent
+                    )
+        This will create label image based on shapefile with the same number of pixels. It's important
+        that your geometry has the same crs with image, if not Exception will be raised. Currently transformation
+        on the fly is not supported.
+        :return: 'ImageReader'
+        """
         return ImageReader()
 
     @property
-    def write(self):
+    def write(self) -> 'ImageWriter':
+        """
+        This function allows to write data into formats like:
+        PNG
+        GEoTiff
+        based on raster data
+        example
+        image\
+            .write\
+            .format("geotiff")\
+            .save("file_path")
+        Reference will be created for GeoTiff file based on extent and crs instance attributes
+        :return: 'ImageWriter'
+        """
         return ImageWriter(data=self)
 
     @classmethod
