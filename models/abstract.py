@@ -11,6 +11,8 @@ from keras.models import Sequential
 from keras.layers import Dense
 from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
+from gis import Raster
+from gis.raster_components import ReferencedArray
 from logs import logger
 from exceptions import ConfigException
 from gis.enums import ConfDictAttributes
@@ -46,9 +48,6 @@ class EmptyModel(ABC):
     def compile(self):
         pass
 
-empty_model = EmptyModel.create(10, "relu")
-empty_model.model.summary()
-
 
 @attr.s
 class AbstractModel(ABC):
@@ -65,21 +64,27 @@ class AbstractModel(ABC):
             )
         self.is_compiled = True
 
-    def predict(self, x, threshold) -> np.ndarray:
+    def predict(self, x, threshold) -> Raster:
         logger.info("Walking alone")
         if not self.is_trained:
             raise AttributeError("Model is not trained yet")
-        predicted = self.model.predict(x)
+        predicted = self.model.predict(np.array([x]))
+        filtered = (predicted > threshold).astype(np.uint8)
+        raster = Raster.from_array(
+            filtered[0, :, :, :],
+            pixel=x.pixel,
+            extent=x.extent
+        )
 
-        return (predicted > threshold).astype(np.uint8)
+        return raster
 
-    def fit(self, data: ModelData, epochs: int):
-        self.config.model.fit(
-            data.x_train,
-            data.y_train,
+    def fit(self, data, epochs: int):
+        self.model.fit(
+            np.array(data.x_train),
+            np.array(data.y_train),
             batch_size=self.config.batch_size,
             epochs=epochs,
-            validation_data=(data.x_test, data.y_test),
+            validation_data=(np.array(data.x_test), np.array(data.y_test)),
             callbacks=self.config.callbacks
         )
         self.is_trained = True

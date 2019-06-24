@@ -5,6 +5,7 @@ from keras.layers.pooling import MaxPooling2D
 from keras.layers.merge import concatenate
 from keras.models import Model
 from keras.layers import Input
+from keras.optimizers import Adam
 
 from models.abstract import AbstractModel
 
@@ -87,10 +88,32 @@ class Unet(AbstractModel):
                               self.config.batchnorm)
 
     @classmethod
-    def from_rasters(cls, unet_config: UnetConfig):
+    def from_rasters(cls, unet_config):
         pass
 
     @classmethod
     def from_arrays(cls, unet_co):
         pass
+
+
+@attr.s
+class UnetConfig:
+
+    callbacks = attr.ib()
+    dropout = attr.ib(default=0.5)
+    batchnorm = attr.ib(default=False)
+    metrics = attr.ib(default=["accuracy"])
+    loss = attr.ib(default="binary_crossentropy")
+    optimizer = attr.ib(default=Adam(lr=0.00001))
+    input_size = attr.ib(default=(128, 128, 13))
+    filters = attr.ib(default=16)
+    batch_size = 2
+
+
+    def __attrs_post_init__(self):
+        self.input_image = Input(self.input_size, name='img')
+        self.model = get_unet(self.input_image,
+                              self.filters,
+                              self.dropout,
+                              self.batchnorm)
 
