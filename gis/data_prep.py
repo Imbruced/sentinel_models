@@ -39,13 +39,6 @@ class UnetData(ModelData):
     random_state = attr.ib(default=2018)
 
 
-# @attr.s
-# class UnetConfig(ModelConfig):
-#
-#     input_size = attr.ib(default=(128, 128, 13))
-#     filters = attr.ib(default=16)
-
-
 def image_meet_pixel_criteria_based_on_threshold(label_image: np.array, image_size: List[int], threshold: float = 30):
     number_of_pixels = reduce((lambda x, y: x * y), image_size)
 
@@ -90,10 +83,9 @@ class RasterData:
         y_data = []
 
         removal_f = image_meet_pixel_criteria_based_on_threshold if remove_empty_labels else image_meets_criteria
-        extents = self.image.extent.divide(image_size[0]*self.image.pixel.x, image_size[0]*self.image.pixel.y)
+        extents = self.image.extent.divide(image_size[0] * self.image.pixel.x, image_size[0] * self.image.pixel.y)
 
         for img, lbl, extent in zip(chunks_array, chunks_label, extents):
-            print(extent.to_wkt())
             if removal_f(lbl, image_size, threshold):
                 x_data.append(Raster.from_array(img, img.pixel, extent))
                 y_data.append(Raster.from_array(lbl, img.pixel, extent))
@@ -106,35 +98,4 @@ class RasterData:
         try:
             assert shape_1 == shape_2
         except AssertionError:
-            raise ValueError("Arrays dont have the same size")
-
-
-
-
-    # def save_con_images(self, path: str, image_shape):
-    #     i_shape, j_shape = self.image.array.shape[:2]
-    #     pixel = self.image.pixel
-    #     for i in range(image_shape-1, i_shape-image_shape):
-    #         for j in range(image_shape-1, j_shape-image_shape):
-    #             value = self.label.array[i, j, 0]
-    #             current_array = self.image.array[i:i+image_shape, j:j+image_shape, :]
-    #             logger.info(current_array.shape)
-    #             image = Raster.from_array(current_array, pixel)
-    #             current_path = os.path.join(path, f"class_{value}")
-    #             if not os.path.exists(current_path):
-    #                 os.mkdir(current_path)
-    #             if value != 0:
-    #                 image.save_gtiff(os.path.join(current_path, f"{str(j_shape*i + j)}.tif"), gdal.GDT_Int16)
-    #
-    # def create_ann_frame(self) -> pd.DataFrame:
-    #     image_records = self.image.array.shape[0] * self.image.array.shape[1]
-    #     image_dim = self.image.array.shape[-1]
-    #
-    #     image_melted = self.image.array.reshape(image_records, image_dim)
-    #     label_melted = self.label.array.reshape(image_records, 1)
-    #
-    #     merged_data = np.concatenate([image_melted, label_melted], axis=1)
-    #     merged_data_df = pd.DataFrame(merged_data, columns=[*list(range(image_dim)),
-    #                                                         "label"])
-    #
-    #     return merged_data_df[merged_data_df["label"]!=0]
+            raise ValueError("Arrays do not have the same size")
