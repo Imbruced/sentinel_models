@@ -130,6 +130,7 @@ class DefaultOptionRead:
             {
                 "format": "shp",
                 "type": None,
+                "driver": "ESRI Shapefile",
                 "crs": None,
                 "extent": None,
                 "pixel": None,
@@ -155,6 +156,22 @@ class DefaultOptionRead:
                 "host": "localhost",
                 "user": "postgres",
                 "password": "postgres"
+            }
+        )
+
+    @classmethod
+    def geojson(cls):
+        return Options(
+            {
+                "format": "shp",
+                "driver": "GeoJSON",
+                "type": None,
+                "crs": None,
+                "extent": None,
+                "pixel": None,
+                "value": 1,
+                "all_unique": "False",
+                "color_column": None
             }
         )
 
