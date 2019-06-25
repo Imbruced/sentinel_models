@@ -1,12 +1,15 @@
-import re
 from abc import ABC
 
 import ogr
 import osr
 from PIL import Image
-import attr
 import gdal
+import attr
+import json
 import numpy as np
+from logs import logger
+import os
+
 
 from gis.crs import Crs
 from gis.decorators import classproperty
@@ -50,8 +53,8 @@ class GdalImage:
         self.y_size = self.ds.RasterYSize
         self.pixel = Pixel(abs(self.pixel_size_x), abs(self.pixel_size_y))
         self.extent = Extent.from_coordinates([
-            self.left_x, self.top_y - (self.y_size * self.pixel_size_y),
-            self.left_x + self.pixel_size_x * self.x_size, self.top_y
+            self.left_x, self.top_y - (self.y_size * abs(self.pixel_size_y)),
+            self.left_x + abs(self.pixel_size_x) * self.x_size, self.top_y
         ], self.crs)
         self.band_number = self.ds.RasterCount
 
@@ -67,8 +70,9 @@ class GdalImage:
         if crs is None:
             projection = ds.GetProjection()
             srs = osr.SpatialReference(wkt=projection)
-            crs = srs.GetAttrValue('AUTHORITY', 0).lower() + ":" + srs.GetAttrValue('AUTHORITY', 1)
-        return cls(ds, path, Crs(crs))
+            crs_gdal = srs.GetAttrValue('AUTHORITY', 0).lower() + ":" + srs.GetAttrValue('AUTHORITY', 1)
+            crs = Crs(crs_gdal)
+        return cls(ds, path, crs)
 
     @classmethod
     def in_memory(cls, x_shape, y_shape, crs=Crs("epsg:4326")):
@@ -309,7 +313,14 @@ class Raster(np.ndarray):
         if not true_color:
             plotter = ImagePlot(self[:, :, 0])
         else:
-            plotter = ImagePlot(self[:, :, :3])
+            array = np.array(
+                [
+                    ImageStand(self[:, :, 0:1]).standarize_image(RangeScaler()),
+                    ImageStand(self[:, :, 1:2]).standarize_image(RangeScaler()),
+                    ImageStand(self[:, :, 2:3]).standarize_image(RangeScaler())
+                ]
+            ).transpose([1, 2, 0, 3]).reshape(*self.shape)
+            plotter = ImagePlot(array)
         plotter.plot()
 
     @lazy_property
@@ -517,13 +528,8 @@ class RasterFromGeometryReader(ABC):
         )
         return extent
 
-
-@attr.s
-class ShapeImageReader(RasterFromGeometryReader):
-    format_name = "shp"
-
     def load(self):
-        geoframe = GeometryFrame.from_file(self.path).to_wkt()
+        geoframe = GeometryFrame.from_file(self.path, self.io_options["driver"]).to_wkt()
 
         crs = self.io_options.get("crs", geoframe.crs)
 
@@ -558,6 +564,16 @@ class ShapeImageReader(RasterFromGeometryReader):
 
 
 @attr.s
+class ShapeImageReader(RasterFromGeometryReader):
+    format_name = "shp"
+
+
+@attr.s
+class GeoJsonImageReader(RasterFromGeometryReader):
+    format_name = "geojson"
+
+
+@attr.s
 class WktImageReader(RasterFromGeometryReader):
     format_name = "wkt"
 
@@ -578,3 +594,120 @@ class PostgisGeomImageReader(RasterFromGeometryReader):
 
     def load(self):
         pass
+
+@attr.s
+class MaxScaler:
+    copy = attr.ib(default=True)
+    value = attr.ib(default=None, validator=[])
+
+    def fit(self, array: np.ndarray):
+        if type(array) != np.ndarray:
+            raise TypeError("This method accepts only numpy array")
+        maximum_value = array.max()
+        return MaxScaler(copy=True, value=maximum_value)
+
+    def fit_transform(self, array: np.ndarray):
+        self.value = array.max()
+        return array/self.value
+
+    def transform(self, array: np.ndarray):
+        if self.value is not None:
+            return array/self.value
+        else:
+            raise ValueError("Can not divide by None")
+
+
+@attr.s
+class RangeScaler:
+    copy = attr.ib(default=True)
+    value = attr.ib(default=None, validator=[])
+
+    def fit(self, array):
+        maximum_value = array.max() - array.min()
+        return self.__class__(copy=True, value=maximum_value)
+
+    def fit_transform(self, array: np.ndarray):
+        array_min = array.min()
+        array_max = array.max()
+        self.value = array_max - array_min
+        return (array-array_min)/self.value
+
+    def transform(self, array: np.ndarray):
+        array_min = array.min()
+        if self.value is not None:
+            return (array-array_min)/self.value
+        else:
+            raise ValueError("Can not divide by None")
+
+
+@attr.s
+class StanarizeParams:
+
+    band_number = attr.ib()
+    coefficients = attr.ib(default={})
+
+    def add(self, coeff, band_name):
+        if band_name not in self.coefficients.keys():
+            self.coefficients[band_name] = coeff
+        else:
+            self.coefficients[band_name] = coeff
+
+
+@attr.s
+class ImageStand:
+    """
+    Class is responsible for scaling image data, it requires gis.raster.Raster object
+    Band names can be passed, by default is ["band_index" ... "band_index+n"]
+    use standarize_image method to standarize data, it will return Raster with proper refactored image values
+
+    """
+    stan_params = attr.ib(init=False)
+    raster = attr.ib()
+    names = attr.ib(default=None)
+
+    def __attrs_post_init__(self):
+        self.stan_params = StanarizeParams(self.raster.ref.band_number)
+        self.names = [f"band_{band}" for band in range(self.raster.shape[-1])] \
+            if self.names is None else self.names
+
+    def save_params(self, path):
+        if os.path.exists(path):
+            raise FileExistsError("File with this name exists in directory")
+        with open(path, "w") as file:
+            params_json = json.load(self.stan_params.coefficients)
+            file.writelines(params_json)
+
+    def standarize_image(self, scaler=None):
+        """
+        Rescale data by maximum
+        :return:
+        """
+        empty_array = np.empty(shape=[*self.raster.shape])
+
+        for index, name in enumerate(self.names):
+            empty_array[:, :, index] = self.__stand_one_dim(self.raster[:, :, index], name, scaler)
+            band = None
+
+        ref = ReferencedArray(empty_array,
+                              self.raster.ref.extent,
+                              self.raster.pixel,
+                              shape=self.raster.ref.shape,
+                              band_number=self.raster.ref.band_number)
+
+        return Raster(self.raster.pixel, ref)
+
+    def __stand_one_dim(self, array: np.ndarray, band_name: str, scaler):
+        """
+
+        :param array:
+        :param band_name:
+        :param scaler:
+        :return:
+        """
+
+        fitted = scaler.fit(array)
+
+        self.stan_params.coefficients[band_name] = fitted
+
+        self.stan_params.add(fitted, band_name)
+        return fitted.transform(array)
