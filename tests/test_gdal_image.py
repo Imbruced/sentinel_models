@@ -14,7 +14,7 @@ from gis.image_data import GdalImage, Raster, ImageWriter, ImageReader
 from gis.io_abstract import ClsFinder, DefaultOptionRead
 from gis.raster_components import Pixel
 from gis.crs import Crs
-from gis.standarizer import ImageStand
+from gis.image_data import ImageStand
 from logs import logger
 from exceptions import OptionNotAvailableException
 from models import Unet, UnetConfig
@@ -410,10 +410,19 @@ class TestImageDataModule(TestCase):
         #
         unet = Unet(config=config)
         unet.compile()
-        unet.fit(unet_images, epochs=70)
+        unet.fit(unet_images, epochs=1)
         predicted = unet.predict(x=unet_images.x_test[0], threshold=0.4)
         SubPlots().extend(
             predicted,
             unet_images.x_test[0]
         ).plot(nrows=1)
+
+    def test_show_tru_color_image(self):
+        image = Raster \
+            .read \
+            .format("geotiff") \
+            .options(crs=Crs("epsg:4326")) \
+            .load(
+            "C:\\Users\\Pawel\\Downloads\\dstl-satellite-imagery-feature-detection\\three_band\\three_band\\6010_1_2.tif")
+        image.show(true_color=True)
 
