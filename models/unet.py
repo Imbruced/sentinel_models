@@ -107,7 +107,7 @@ class UnetConfig:
     optimizer = attr.ib(default=Adam(lr=0.00001))
     input_size = attr.ib(default=(128, 128, 13))
     filters = attr.ib(default=16)
-    batch_size = 2
+    batch_size = attr.ib(default=8)
 
 
     def __attrs_post_init__(self):
