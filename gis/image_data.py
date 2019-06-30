@@ -1,4 +1,6 @@
 from abc import ABC
+from typing import NoReturn
+import zipfile
 
 import ogr
 import osr
@@ -7,7 +9,6 @@ import gdal
 import attr
 import json
 import numpy as np
-from logs import logger
 import os
 
 
@@ -711,3 +712,40 @@ class ImageStand:
 
         self.stan_params.add(fitted, band_name)
         return fitted.transform(array)
+
+
+@attr.s
+class CsvImageWriter:
+    io_options = attr.ib()
+    format_name = "csv"
+    data = attr.ib(type=Raster)
+
+    def save(self, path: str) -> NoReturn:
+        """TODO add most common option to csv writer"""
+        label_data = self.__add_label_data_if_its_provided()
+        ann_data = AnnData.from_rasters(self.data, label_data)
+
+        ann_data.to_csv(path, delimiter=self.io_options["delimiter"], index=False)
+
+    def __add_label_data_if_its_provided(self):
+        label_data = self.io_options["label_data"]
+        if not isinstance(label_data, Raster):
+            raise TypeError("label data has to be raster type")
+        return label_data
+
+
+@attr.s
+class SentinelImageReader:
+    io_options = attr.ib()
+    format_name = "sentinel"
+    data = attr.ib(type=Raster)
+
+    def load(self):
+        pass
+
+    def __get_image_number(self):
+        pass
+
+    def __download_file(self):
+        pass
+

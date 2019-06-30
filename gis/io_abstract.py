@@ -175,4 +175,15 @@ class DefaultOptionRead:
             }
         )
 
+    @classmethod
+    def sentinel(cls):
+        return Options(
+            {
+                "format": "sentinel",
+                "extent": None,
+                "user": None,
+                "password": None
+            }
+        )
+
 

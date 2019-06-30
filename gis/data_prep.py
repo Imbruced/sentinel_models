@@ -91,6 +91,12 @@ class RasterData:
                 y_data.append(Raster.from_array(lbl, img.pixel, extent))
         return UnetData(x_data, y_data)
 
+    def prepare_ann_data(self):
+        pass
+
+    def prepare_cnn_data(self):
+        pass
+
     def assert_equal_size(self):
         shape_1 = ArrayShape(self.label.array.shape[:2])
         shape_2 = ArrayShape(self.image.array.shape[:2])
@@ -99,3 +105,9 @@ class RasterData:
             assert shape_1 == shape_2
         except AssertionError:
             raise ValueError("Arrays do not have the same size")
+
+
+class AnnData(ModelData):
+
+    test_size = attr.ib(default=0.1)
+    random_state = attr.ib(default=2018)

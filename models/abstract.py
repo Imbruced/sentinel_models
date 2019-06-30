@@ -1,18 +1,13 @@
 from abc import ABC
-from typing import List
-from copy import deepcopy
 
 import attr
 from keras.models import load_model
-from sklearn.model_selection import train_test_split
 import numpy as np
 from keras.optimizers import Adam
 from keras.models import Sequential
 from keras.layers import Dense
-from keras.callbacks import EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 
 from gis import Raster
-from gis.raster_components import ReferencedArray
 from logs import logger
 from exceptions import ConfigException
 from gis.enums import ConfDictAttributes
@@ -229,31 +224,3 @@ class Ann(ModelBuilder):
         :param dict_config:
         :return:
         """
-
-
-# s = ModelBuilderConfig(
-#     activations=["relu", "relu", "relu", "softmax"],
-#     layers=[13, 10, 10, 13],
-#     input_dim=13
-# )
-#
-# callbacks = [
-#     EarlyStopping(patience=100, verbose=1),
-#     ReduceLROnPlateau(factor=0.1, patience=100, min_lr=0, verbose=1),
-#     ModelCheckpoint('model_more_class_pixels.h5', verbose=1, save_best_only=True, save_weights_only=False)
-# ]
-#
-# config = TrainingConfig(
-#     callbacks=callbacks
-# )
-#
-# builder = ModelBuilder(
-#     config=config,
-#     is_compiled=False,
-#     is_trained=False
-# )
-#
-# builder.build(s).compile()
-# builder.model.summary()
-# # builder.summary()
-
