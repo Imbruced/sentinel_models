@@ -1,6 +1,6 @@
 import re
 import os
-from typing import List
+from typing import List, Iterable
 from typing import NoReturn
 
 import attr
@@ -49,8 +49,8 @@ class DataFrameShower:
 
         for row in limited_data:
             lines.append(self.__prepare_row_string(row, columns_length))
-        dashes = "-" * lines[0].__len__()
-
+        # dashes = "+" + "-" * (lines[0].__len__()-2) + "+"
+        dashes = self.__create_dashes(columns_length)
         return dashes + "\n" + f"\n{dashes}\n".join(lines) + "\n" + dashes
 
     @staticmethod
@@ -69,7 +69,7 @@ class DataFrameShower:
                 left_add = (int(missing_length / 2) + 1) * " "
                 right_add = (int(missing_length / 2)) * " "
 
-            rw.append(DataFrameShower.MARGIN * " " + left_add + f"{str(value)[:length]}" + DataFrameShower.MARGIN * " " + right_add)
+            rw.append(DataFrameShower.MARGIN * " " + DataFrameShower.MARGIN * " " + right_add + left_add + f"{str(value)[:length]}")
 
         return "|" + "|".join(rw) + "|"
 
@@ -77,11 +77,15 @@ class DataFrameShower:
         maximums = []
         for col in self.data_frame.columns:
             max_length = self.data_frame.head(limit)[col].apply(lambda x: str(x).__len__()).max()
+            max_length = max_length if max_length > len(col) else len(col)
             if truncate:
                 maximums.append(min(max_length, self.TRUNCATE_SIZE)+self.MARGIN*2)
             else:
                 maximums.append(max_length + self.MARGIN * 2)
         return maximums
+
+    def __create_dashes(self, columns_lengths: Iterable[int]):
+        return "+" + "+".join(["-" * (length) + "-"*(DataFrameShower.MARGIN*2) for length in columns_lengths]) + "+"
 
 
 @attr.s
