@@ -182,7 +182,8 @@ class DefaultOptionRead:
                 "format": "sentinel",
                 "extent": None,
                 "user": None,
-                "password": None
+                "password": None,
+                "pixel": None
             }
         )
 

@@ -1,6 +1,5 @@
 from abc import ABC
 from typing import NoReturn
-import zipfile
 
 import ogr
 import osr
@@ -16,6 +15,7 @@ from gis.crs import Crs
 from gis.decorators import classproperty
 from gis.io_abstract import IoHandler, DefaultOptionWrite
 from gis.geometry import Extent, Point, Origin, Wkt, GeometryFrame, lazy_property
+from gis.preprocessing import User, SentinelDownloader, GdalMerge
 from gis.raster_components import Pixel
 from plotting import ImagePlot
 from validators.validators import IsImageFile
@@ -406,7 +406,6 @@ class GeoTiffImageWriter:
             transformed_ds.ds.GetRasterBand(band + 1).WriteArray(self.data[:, :, band])
 
 
-
 @attr.s
 class PngImageWriter:
     format_name = "png"
@@ -596,6 +595,7 @@ class PostgisGeomImageReader(RasterFromGeometryReader):
     def load(self):
         pass
 
+
 @attr.s
 class MaxScaler:
     copy = attr.ib(default=True)
@@ -740,12 +740,33 @@ class SentinelImageReader:
     format_name = "sentinel"
     data = attr.ib(type=Raster)
 
+    def __attrs_post_init__(self):
+        extent_wkt = self.io_options["extent"].wkt
+        user = User(self.io_options["user"], self.io_options["password"])
+        self.sentinel_downloader = SentinelDownloader(
+            user,
+            extent_wkt,
+            self.io_options["date"]
+        )
+
     def load(self):
         pass
 
-    def __get_image_number(self):
+    def download_files(self):
+        self.sentinel_downloader.download_items()
+
+    def _wrap_files(self):
         pass
 
-    def __download_file(self):
-        pass
+    def _merge_files(self):
+        GdalMerge(
+            arguments=[
+                "-ps", "10", "10", "-separate"
+            ],
+            files=[
+            ],
+        )
+
+    def __get_request_metadata(self):
+        return self.sentinel_downloader.scenes
 
