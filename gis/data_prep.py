@@ -74,7 +74,7 @@ class RasterData:
         except AssertionError:
             raise DimensionException("Images does not have the same extents")
 
-    def prepare_unet_images(self, image_size: List[int], remove_empty_labels=True, threshold=30.0):
+    def prepare_unet_images(self, image_size: List[int], remove_empty_labels=True, threshold=0.0):
         """TODO assign proper extents"""
 
         chunks_array = create_two_dim_chunk(self.image, image_size)
