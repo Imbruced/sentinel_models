@@ -13,7 +13,6 @@ from dateutil.relativedelta import relativedelta
 import attr
 from sentinelsat import SentinelAPI
 
-from gis import Extent
 from gis.geometry import lazy_property
 
 SCRIPT_PATH = os.path.dirname(os.path.abspath(__file__))

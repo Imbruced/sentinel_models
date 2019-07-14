@@ -46,7 +46,6 @@ def get_unet(input_img, n_filters, dropout, batchnorm):
 
     c5 = conv2d_block(p4, n_filters=n_filters * 16, kernel_size=3, batchnorm=batchnorm)
 
-    # expansive path
     u6 = Conv2DTranspose(n_filters * 8, (3, 3), strides=(2, 2), padding='same')(c5)
     u6 = concatenate([u6, c4])
     u6 = Dropout(dropout)(u6)
@@ -74,11 +73,9 @@ def get_unet(input_img, n_filters, dropout, batchnorm):
 
 @attr.s
 class Unet(AbstractModel):
-
     is_trained = attr.ib(default=False, init=False)
     is_compiled = attr.ib(default=False, init=False)
     model = attr.ib(default=None)
-
 
     def __attrs_post_init__(self):
         self.input_image = Input(self.config.input_size, name='img')
@@ -98,7 +95,6 @@ class Unet(AbstractModel):
 
 @attr.s
 class UnetConfig:
-
     callbacks = attr.ib()
     dropout = attr.ib(default=0.5)
     batchnorm = attr.ib(default=False)
@@ -109,11 +105,9 @@ class UnetConfig:
     filters = attr.ib(default=16)
     batch_size = attr.ib(default=8)
 
-
     def __attrs_post_init__(self):
         self.input_image = Input(self.input_size, name='img')
         self.model = get_unet(self.input_image,
                               self.filters,
                               self.dropout,
                               self.batchnorm)
-

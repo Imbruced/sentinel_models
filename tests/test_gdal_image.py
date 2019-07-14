@@ -426,5 +426,3 @@ class TestImageDataModule(TestCase):
             "C:\\Users\\Pawel\\Downloads\\dstl-satellite-imagery-feature-detection\\three_band\\three_band\\6010_1_2.tif")
         image.show(true_color=True)
 
-
-"POLYGON((18.601393 53.022649, 18.600420 53.025014, 18.604536 53.025043, 18.604523 53.022647, 18.601393 53.022649))"
