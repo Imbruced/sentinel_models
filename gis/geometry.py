@@ -17,7 +17,6 @@ from validators.validators import IsNumeric, WktValidator
 from exceptions.exceptions import GeometryCollectionError
 from exceptions.exceptions import GeometryTypeError
 
-
 scriptDirectory = os.path.dirname(os.path.realpath(__file__))
 
 
@@ -29,6 +28,7 @@ def lazy_property(fn):
         if not hasattr(self, attr_name):
             setattr(self, attr_name, fn(self))
         return getattr(self, attr_name)
+
     return wrapper
 
 
@@ -62,14 +62,15 @@ class DataFrameShower:
                 left_add = ""
                 right_add = ""
             elif missing_length % 2 == 0:
-                left_add = int(missing_length/2) * " "
-                right_add = int(missing_length/2) * " "
+                left_add = int(missing_length / 2) * " "
+                right_add = int(missing_length / 2) * " "
 
             else:
                 left_add = (int(missing_length / 2) + 1) * " "
                 right_add = (int(missing_length / 2)) * " "
 
-            rw.append(DataFrameShower.MARGIN * " " + DataFrameShower.MARGIN * " " + right_add + left_add + f"{str(value)[:length]}")
+            rw.append(
+                DataFrameShower.MARGIN * " " + DataFrameShower.MARGIN * " " + right_add + left_add + f"{str(value)[:length]}")
 
         return "|" + "|".join(rw) + "|"
 
@@ -79,18 +80,17 @@ class DataFrameShower:
             max_length = self.data_frame.head(limit)[col].apply(lambda x: str(x).__len__()).max()
             max_length = max_length if max_length > len(col) else len(col)
             if truncate:
-                maximums.append(min(max_length, self.TRUNCATE_SIZE)+self.MARGIN*2)
+                maximums.append(min(max_length, self.TRUNCATE_SIZE) + self.MARGIN * 2)
             else:
                 maximums.append(max_length + self.MARGIN * 2)
         return maximums
 
     def __create_dashes(self, columns_lengths: Iterable[int]):
-        return "+" + "+".join(["-" * (length) + "-"*(DataFrameShower.MARGIN*2) for length in columns_lengths]) + "+"
+        return "+" + "+".join(["-" * (length) + "-" * (DataFrameShower.MARGIN * 2) for length in columns_lengths]) + "+"
 
 
 @attr.s
 class GeometryFrame:
-
     frame = attr.ib()
     geometry_column = attr.ib()
     crs = attr.ib(default=Crs("epsg:4326"))
@@ -320,7 +320,6 @@ class Line:
 
 @attr.s
 class Origin(Point):
-
     _x = attr.ib(default=0)
     _y = attr.ib(default=0)
 
@@ -330,7 +329,6 @@ class Origin(Point):
 
 @attr.s
 class Extent:
-
     left_down = attr.ib(default=Point(0, 0))
     right_up = attr.ib(default=Point(1, 1))
     crs = attr.ib(default=Crs("epsg:4326"))
@@ -356,7 +354,7 @@ class Extent:
         :param origin: is the left down corner from which scaled extent will have origin
         :return: returns New instance of extent
         """
-        scaled_point = Point(int(self.dx/x + origin.x), int(self.dy/y + origin.y))
+        scaled_point = Point(int(self.dx / x + origin.x), int(self.dy / y + origin.y))
         shrinked = Extent(origin, scaled_point)
 
         return shrinked
@@ -385,7 +383,7 @@ class Extent:
         return Extent(ld, ru, crs=self.crs)
 
     def expand_percentage(self, percent_x, percent_y):
-        return self.expand(int(self.dx*percent_x), int(self.dy*percent_y))
+        return self.expand(int(self.dx * percent_x), int(self.dy * percent_y))
 
     def expand_percentage_equally(self, percent):
         return self.expand_percentage(percent, percent)
@@ -395,11 +393,11 @@ class Extent:
 
     def to_wkt(self):
         coordinates = [
-                        self.left_down,
-                        self.left_down.translate(0, self.dy),
-                        self.right_up,
-                        self.left_down.translate(self.dx, 0),
-                        self.left_down
+            self.left_down,
+            self.left_down.translate(0, self.dy),
+            self.right_up,
+            self.left_down.translate(self.dx, 0),
+            self.left_down
         ]
 
         coordinates_text = ", ".join([f"{el.x} {el.y}" for el in coordinates])
@@ -411,14 +409,14 @@ class Extent:
         for tile in range(0, tiles_number_dy):
             extents.append(
                 Extent(
-                    self.right_up.translate(-self.dx, -(tile+1)*tile_size),
+                    self.right_up.translate(-self.dx, -(tile + 1) * tile_size),
                     self.right_up.translate(0, (-tile) * tile_size),
                     crs=self.crs)
             )
         if int(float(self.dy) // float(tile_size)) != float(self.dy) / float(tile_size):
             extents.append(Extent(
                 self.right_up.translate(-self.dx, -self.dy),
-                self.right_up.translate(0, -tiles_number_dy*tile_size),
+                self.right_up.translate(0, -tiles_number_dy * tile_size),
                 self.crs
             ))
         return extents
@@ -430,13 +428,13 @@ class Extent:
         for tile in range(tiles_number_dx):
             extents.append(
                 Extent(
-                    self.left_down.translate(tile*tile_size, 0),
-                    self.left_down.translate((tile+1) * tile_size, self.dy),
+                    self.left_down.translate(tile * tile_size, 0),
+                    self.left_down.translate((tile + 1) * tile_size, self.dy),
                     crs=self.crs)
             )
         if int(float(self.dx) // float(tile_size)) == float(self.dx) / float(tile_size):
             extents.append(Extent(
-                self.left_down.translate(tiles_number_dx*tile_size, 0),
+                self.left_down.translate(tiles_number_dx * tile_size, 0),
                 self.left_down.translate(self.dx, self.dy),
                 self.crs
             ))
@@ -468,13 +466,13 @@ def cast_float(string: str):
 
 @attr.s
 class Wkt:
-
     wkt_string = attr.ib(type=str, validator=WktValidator())
     crs = attr.ib(default="local")
 
     def __attrs_post_init__(self):
         self.__geom = wkt_loader.loads(self.wkt_string)
         self.__type = self.__geom.type
+
     #
     # def to_geometry(self):
     #     return shapely.wkt.loads(self.wkt_string)

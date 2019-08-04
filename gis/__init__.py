@@ -1,4 +1,4 @@
-from gis.image_data import Raster
+from gis.raster import Raster
 from gis.geometry import GeometryFrame
 from gis.raster_components import Pixel
 from gis.geometry import Extent

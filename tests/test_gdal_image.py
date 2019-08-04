@@ -7,18 +7,19 @@ from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
 from keras.optimizers import SGD
 from sklearn.preprocessing import StandardScaler
 
+from data_aquiring.io_abstract import ClsFinder, DefaultOptionRead
 from exceptions.exceptions import FormatNotAvailable, CrsException
-from gis.data_prep import RasterData
+from gis import Raster
 from gis.geometry import Origin, Wkt, Point, Extent, GeometryFrame, Polygon, InteractiveGeometryPlotter
-from gis.image_data import GdalImage, Raster, ImageWriter, ImageReader
-from gis.io_abstract import ClsFinder, DefaultOptionRead
+from gis.gdal_image import GdalImage
+from gis.raster import ImageWriter, ImageReader, ImageStand
 from gis.raster_components import Pixel
 from gis.crs import Crs
-from gis.image_data import ImageStand
 from logs import logger
 from exceptions import OptionNotAvailableException
 from models import Unet, UnetConfig
 from plotting import SubPlots
+from preprocessing.data_preparation import RasterData
 
 TEST_IMAGE_PATH = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pictures\\buildings.tif"
 
@@ -46,7 +47,9 @@ class TestImageDataModule(TestCase):
 
     def test_gdal_image_to_raster(self):
         gd = GdalImage.load_from_file(TEST_IMAGE_PATH, "epsg:4326")
-        self.assertEqual(isinstance(gd.to_raster(), Raster), True)
+        pixel, ref = gd.to_raster()
+        raster = Raster(pixel=pixel, ref=ref)
+        self.assertEqual(isinstance(raster, Raster), True)
 
     def test_insert_polygon(self):
         gdal_in_memory = GdalImage.in_memory(100, 100)
@@ -130,9 +133,8 @@ class TestImageDataModule(TestCase):
             "Polygon((110.0 110.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 110.0))",
             10
         )
-        raster = gdal_in_memory.to_raster()
-
-        return raster
+        pixel, ref = gdal_in_memory.to_raster()
+        return Raster(pixel=pixel, ref=ref)
 
     def test_save_to_geotiff(self):
 
@@ -162,9 +164,9 @@ class TestImageDataModule(TestCase):
             save(TEST_FILE)
 
     def test_reading_geotif(self):
-        raster = Raster\
-            .read\
-            .format("geotiff")\
+        raster = Raster \
+            .read \
+            .format("geotiff") \
             .load(TEST_IMAGE_PATH)
 
         array = raster.array
@@ -178,9 +180,9 @@ class TestImageDataModule(TestCase):
             .read \
             .format("wkt") \
             .options(
-             pixel=Pixel(0.2, 0.2),
-             value=10
-            ).load(wkt)
+            pixel=Pixel(0.2, 0.2),
+            value=10
+        ).load(wkt)
 
         array = raster.array
         self.assertEqual(array[array == 10].size, 2601)
@@ -192,9 +194,9 @@ class TestImageDataModule(TestCase):
             .read \
             .format("wkt") \
             .options(
-                pixel=Pixel(0.7, 0.7),
-                value=10
-             ).load(wkt)
+            pixel=Pixel(0.7, 0.7),
+            value=10
+        ).load(wkt)
         # raster.show()
 
     def test_reading_raster_from_shapefile_value_baased_on_column(self):
@@ -246,7 +248,7 @@ class TestImageDataModule(TestCase):
             [
                 Point(x[0], x[1]) for x in
                 [[110.0, 110.0], [110.0, 120.0], [120.0, 120.0], [120.0, 110.0], [110.0, 110.0]]
-             ]
+            ]
         )
         self.assertEqual(
             wkt2.coordinates,
@@ -308,10 +310,9 @@ class TestImageDataModule(TestCase):
     def test_different_crs_and_extent_crs(self):
 
         with self.assertRaises(CrsException):
-
             image = Raster \
                 .read \
-                .options(crs=Crs("epsg:4326"))\
+                .options(crs=Crs("epsg:4326")) \
                 .format("geotiff") \
                 .load(TEST_IMAGE_PATH)
 
@@ -319,10 +320,10 @@ class TestImageDataModule(TestCase):
                 .read \
                 .format("shp") \
                 .options(
-                    extent=image.extent,
-                    crs=Crs("epsg:2008"),
-                    pixel=image.pixel
-                ) \
+                extent=image.extent,
+                crs=Crs("epsg:2008"),
+                pixel=image.pixel
+            ) \
                 .load(self.shape_path)
 
     def test_creating_unet_images(self):
@@ -335,26 +336,25 @@ class TestImageDataModule(TestCase):
             .read \
             .format("shp") \
             .options(
-                pixel=image.pixel,
-                extent=image.extent
-            ) \
+            pixel=image.pixel,
+            extent=image.extent
+        ) \
             .load(self.shape_path)
 
         raster_data = RasterData(image=image, label=label)
         images = raster_data.prepare_unet_images([128, 128])
         # print(images.x_train[1].shape)
-        images.x[0].write\
-            .format("geotiff")\
+        images.x[0].write \
+            .format("geotiff") \
             .save("C:\\Users\\Pawel\\Desktop\\sentinel_models\\data\\image_0.tif")
 
-        images.x[1].write\
-            .format("geotiff")\
+        images.x[1].write \
+            .format("geotiff") \
             .save("C:\\Users\\Pawel\\Desktop\\sentinel_models\\data\\image_1.tif")
 
-        images.x[2].write\
-            .format("geotiff")\
+        images.x[2].write \
+            .format("geotiff") \
             .save("C:\\Users\\Pawel\\Desktop\\sentinel_models\\data\\image_2.tif")
-
 
     def test_extent_split(self):
         extent = Extent.from_coordinates([20.0, 20.0, 50.0, 50.0], "epsg:2180").divide_dy(5.1)
@@ -423,6 +423,5 @@ class TestImageDataModule(TestCase):
             .format("geotiff") \
             .options(crs=Crs("epsg:4326")) \
             .load(
-            "C:\\Users\\Pawel\\Downloads\\dstl-satellite-imagery-feature-detection\\three_band\\three_band\\6010_1_2.tif")
+            TEST_IMAGE_PATH)
         image.show(true_color=True)
-

@@ -1,14 +1,42 @@
 import inspect
-import re
 import sys
-from abc import ABC
-from copy import deepcopy
-from typing import Dict
 
 import attr
 import gdal
 
-from gis.raster_components import Options
+from exceptions import OptionNotAvailableException
+
+
+@attr.s
+class Options:
+    options = attr.ib(factory=dict)
+
+    def __getitem__(self, item):
+        if item in self.options.keys():
+            return self.options[item]
+        else:
+            raise KeyError(f"Can not find {item} in ")
+
+    def __setitem__(self, key, value):
+        if key == "format":
+            raise AttributeError("format can not be used in options")
+        if value is None:
+            raise TypeError("Value can not be error")
+        if key in self.options.keys():
+            self.options[key] = value
+        else:
+            raise OptionNotAvailableException(f"Can not find option specified in {self.options.keys()}")
+
+    def __eq__(self, other):
+        return self.options == other.options
+
+    def get(self, item, default=None):
+        try:
+            value = self.options[item]
+            ret_value = value if value is not None else default
+        except KeyError:
+            raise KeyError(f"Argument {item} is not available")
+        return ret_value
 
 
 @attr.s
@@ -28,28 +56,6 @@ class ClsFinder:
             except IndexError:
                 pass
         return __cls
-
-
-@attr.s
-class IoHandler(ABC):
-    io_options = attr.ib(type=Options)
-
-    def options(self, **kwargs):
-        current_options = deepcopy(self.io_options)
-        for key in kwargs:
-            current_options[key] = kwargs[key]
-        return current_options
-
-    def available_cls(self, regex: str, name: str):
-        if not hasattr(self, "__writers"):
-            setattr(self, "__writers", self.__get_cls(regex, name))
-        return getattr(self, "__writers")
-
-    def __get_cls(self, regex: str, name: str) -> Dict[str, str]:
-        return {cl.format_name: cl
-                for cl in ClsFinder(name).available_cls
-                if re.match(regex, cl.__name__)
-                }
 
 
 @attr.s

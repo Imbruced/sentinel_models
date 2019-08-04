@@ -9,38 +9,6 @@ from exceptions import OptionNotAvailableException
 
 
 @attr.s
-class Options:
-    options = attr.ib(factory=dict)
-
-    def __getitem__(self, item):
-        if item in self.options.keys():
-            return self.options[item]
-        else:
-            raise KeyError(f"Can not find {item} in ")
-
-    def __setitem__(self, key, value):
-        if key == "format":
-            raise AttributeError("format can not be used in options")
-        if value is None:
-            raise TypeError("Value can not be error")
-        if key in self.options.keys():
-            self.options[key] = value
-        else:
-            raise OptionNotAvailableException(f"Can not find option specified in {self.options.keys()}")
-
-    def __eq__(self, other):
-        return self.options == other.options
-
-    def get(self, item, default=None):
-        try:
-            value = self.options[item]
-            ret_value = value if value is not None else default
-        except KeyError:
-            raise KeyError(f"Argument {item} is not available")
-        return ret_value
-
-
-@attr.s
 class Pixel(metaclass=ConfigMeta):
     x = attr.ib(default=1.0, validator=[attr.validators.instance_of(float), ispositive])
     y = attr.ib(default=1.0, validator=[attr.validators.instance_of(float), ispositive])

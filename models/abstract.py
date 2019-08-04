@@ -60,7 +60,6 @@ class AbstractModel(ABC):
         self.is_compiled = True
 
     def predict(self, x, threshold) -> Raster:
-        logger.info("Walking alone")
         if not self.is_trained:
             raise AttributeError("Model is not trained yet")
         predicted = self.model.predict(np.array([x]))
@@ -210,6 +209,7 @@ class ModelBuilder(AbstractModel):
             is_trained=False,
             is_compiled=False
         )
+
 
 @attr.s
 class Ann(ModelBuilder):

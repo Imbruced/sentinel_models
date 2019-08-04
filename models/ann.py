@@ -48,15 +48,6 @@ class InputFrame:
 
         return float(unique_values.__len__()), float(input_dim), float(feature_nr)
 
-    def train_test_split(self, **kwargs):
-        inputs, label = self.scale_data(**kwargs)
-        X_train, X_valid, y_train, y_valid = train_test_split(inputs,
-                                                              label,
-                                                              test_size=0.25,
-                                                              random_state=2018)
-
-        return X_train, y_train, X_valid, y_valid
-
     def scale_data(self, **kwargs):
         label_column = kwargs.get("label_column", "label")
 
@@ -88,11 +79,6 @@ class InputFrame:
         unique_values = self.__input_frame[label_column].unique().tolist()
 
         return unique_values
-
-    def load_file(self, **kwargs):
-        obs_frame = pd.read_csv(self.__input_path, **kwargs)
-
-        return obs_frame
 
 
 class Model:
