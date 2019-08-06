@@ -2,10 +2,8 @@ import attr
 
 from validators.validators import ispositive
 import os
-from gis.meta import ConfigMeta
+from meta.meta import ConfigMeta
 import typing
-
-from exceptions import OptionNotAvailableException
 
 
 @attr.s

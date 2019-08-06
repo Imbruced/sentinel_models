@@ -1,6 +1,6 @@
 import attr
 
-from gis.meta import ConfigMeta
+from meta.meta import ConfigMeta
 
 
 @attr.s

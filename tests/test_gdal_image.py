@@ -3,23 +3,21 @@ from unittest import TestCase
 
 import gdal
 import numpy as np
-from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
-from keras.optimizers import SGD
 from sklearn.preprocessing import StandardScaler
 
-from data_aquiring.io_abstract import ClsFinder, DefaultOptionRead
+from config.options_read import DefaultOptionRead
 from exceptions.exceptions import FormatNotAvailable, CrsException
 from gis import Raster
 from gis.geometry import Origin, Wkt, Point, Extent, GeometryFrame, Polygon, InteractiveGeometryPlotter
 from gis.gdal_image import GdalImage
-from gis.raster import ImageWriter, ImageReader, ImageStand
 from gis.raster_components import Pixel
 from gis.crs import Crs
 from logs import logger
 from exceptions import OptionNotAvailableException
-from models import Unet, UnetConfig
-from plotting import SubPlots
 from preprocessing.data_preparation import RasterData
+from preprocessing.image_standarizer import ImageStand
+from utils.cls_finder import ClsFinder
+from writers.image import ImageWriter
 
 TEST_IMAGE_PATH = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pictures\\buildings.tif"
 
@@ -374,48 +372,48 @@ class TestImageDataModule(TestCase):
         cnt = standarized[(standarized >= 2.73777289) & (standarized <= 3.0)]
         self.assertEqual(cnt.size, 4135)
 
-    def test_unet_model(self):
-        image = Raster \
-            .read \
-            .format("geotiff") \
-            .load(TEST_IMAGE_PATH)
-
-        label: Raster = Raster \
-            .read \
-            .format("shp") \
-            .options(
-            pixel=image.pixel,
-            extent=image.extent
-        ) \
-            .load(self.shape_path)
-
-        standarize1 = ImageStand(raster=image)
-        standarized = standarize1.standarize_image(StandardScaler())
-        raster_data = RasterData(standarized, label)
-        unet_images = raster_data.prepare_unet_images(image_size=(64, 64))
-
-        callbacks = [
-            EarlyStopping(patience=100, verbose=1),
-            ReduceLROnPlateau(factor=0.1, patience=100, min_lr=0, verbose=1),
-            ModelCheckpoint('model_more_class_pixels.h5', verbose=1, save_best_only=True, save_weights_only=False)
-        ]
-        config = UnetConfig(
-            input_size=[64, 64, 3],
-            metrics=["accuracy"],
-            optimizer=SGD(lr=0.001),
-            callbacks=callbacks,
-            loss="binary_crossentropy",
-
-        )
-        #
-        unet = Unet(config=config)
-        unet.compile()
-        unet.fit(unet_images, epochs=1)
-        predicted = unet.predict(x=unet_images.x_test[0], threshold=0.4)
-        SubPlots().extend(
-            predicted,
-            unet_images.x_test[0]
-        ).plot(nrows=1)
+    # def test_unet_model(self):
+    #     image = Raster \
+    #         .read \
+    #         .format("geotiff") \
+    #         .load(TEST_IMAGE_PATH)
+    #
+    #     label: Raster = Raster \
+    #         .read \
+    #         .format("shp") \
+    #         .options(
+    #         pixel=image.pixel,
+    #         extent=image.extent
+    #     ) \
+    #         .load(self.shape_path)
+    #
+    #     standarize1 = ImageStand(raster=image)
+    #     standarized = standarize1.standarize_image(StandardScaler())
+    #     raster_data = RasterData(standarized, label)
+    #     unet_images = raster_data.prepare_unet_images(image_size=(64, 64))
+    #
+    #     callbacks = [
+    #         EarlyStopping(patience=100, verbose=1),
+    #         ReduceLROnPlateau(factor=0.1, patience=100, min_lr=0, verbose=1),
+    #         ModelCheckpoint('model_more_class_pixels.h5', verbose=1, save_best_only=True, save_weights_only=False)
+    #     ]
+    #     config = UnetConfig(
+    #         input_size=[64, 64, 3],
+    #         metrics=["accuracy"],
+    #         optimizer=SGD(lr=0.001),
+    #         callbacks=callbacks,
+    #         loss="binary_crossentropy",
+    #
+    #     )
+    #     #
+    #     unet = Unet(config=config)
+    #     unet.compile()
+    #     unet.fit(unet_images, epochs=1)
+    #     predicted = unet.predict(x=unet_images.x_test[0], threshold=0.4)
+    #     SubPlots().extend(
+    #         predicted,
+    #         unet_images.x_test[0]
+    #     ).plot(nrows=1)
 
     def test_show_tru_color_image(self):
         image = Raster \

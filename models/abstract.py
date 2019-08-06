@@ -10,7 +10,7 @@ from keras.layers import Dense
 from gis import Raster
 from logs import logger
 from exceptions import ConfigException
-from gis.enums import ConfDictAttributes
+from enums.enums import ConfDictAttributes
 
 
 @attr.s
