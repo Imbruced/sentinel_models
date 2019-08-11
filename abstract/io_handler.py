@@ -7,16 +7,18 @@ import attr
 
 @attr.s
 class IoAbstractFactory(ABC):
-    io_options = attr.ib(default=None)
+    io_options = attr.ib()
 
     def format(self, format: str) -> 'IoAbstractFactory':
         raise NotImplementedError
 
     def options(self, **kwargs) -> 'IoAbstractFactory':
+        if self.io_options is None:
+            raise AttributeError("Please use format method first")
         current_options = deepcopy(self.io_options)
         for key in kwargs:
             current_options[key] = kwargs[key]
-        return self.__class__(current_options)
+        return IoAbstractFactory(io_options=current_options)
 
 
 @attr.s
@@ -36,8 +38,8 @@ class ReadAbstractFactory(IoAbstractFactory):
 
 @attr.s
 class WriteAbstractFactory(IoAbstractFactory):
-    io_options = attr.ib(default=None)
-    data = attr.ib(default=None)
+    io_options = attr.ib()
+    data = attr.ib()
 
     def save(self, path: str) -> NoReturn:
         raise NotImplementedError

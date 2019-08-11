@@ -16,7 +16,7 @@ class ImageWriterFactory(WriteAbstractFactory):
 
     def save(self, path: str):
         if self.io_options is None:
-            raise AttributeError("Please use options first")
+            raise AttributeError("Please use format first")
         image_format = self.__get_writer()
         writer = self.writers[image_format](
             io_options=self.io_options,

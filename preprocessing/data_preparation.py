@@ -7,6 +7,7 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from exceptions.exceptions import PixelSizeException, DimensionException
+from gis import Raster
 from gis.raster_components import create_two_dim_chunk
 from gis.raster_components import ArrayShape
 from utils.decorators import lazy_property
@@ -139,8 +140,8 @@ class UnetDataCreator(DataCreator):
 
         for img, lbl, extent in zip(self.chunks_array, self.chunks_label, self.extents):
             if self.removal_function(lbl, self.image_size, self.threshold):
-                x_data.append(r.Raster.from_array(img, img.pixel, extent))
-                y_data.append(r.Raster.from_array(lbl, img.pixel, extent))
+                x_data.append(Raster.from_array(img, img.pixel, extent))
+                y_data.append(Raster.from_array(lbl, img.pixel, extent))
         return UnetData(x_data, y_data)
 
     @lazy_property

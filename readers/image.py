@@ -18,10 +18,12 @@ class ImageReaderFactory(ReadAbstractFactory):
 
     def load(self, path) -> 'Raster':
         image_format = self.__get_reader()
-        reader = self.readers[image_format](
+        raster: 'Raster' = self.readers[image_format](
             io_options=self.io_options,
             path=path
         ).load()
+
+        return raster
 
     def format(self, format: str):
         try:
@@ -37,8 +39,8 @@ class ImageReaderFactory(ReadAbstractFactory):
         return {cl.format_name: cl for cl in self.available_cls()}
 
     @property
-    def __str_writers(self):
-        return ", ".join([self.readers[key].format_name for key in self.writers])
+    def __str_readers(self):
+        return ", ".join([self.readers[key].format_name for key in self.readers])
 
     def get_cls(self, name: str) -> 'Reader':
         return self.readers[name]

@@ -2,8 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from gis import raster as r
-from gis import geometry as g
+from gis import raster as r, Extent
 from gis import raster_components as rc
 from gis.crs import Crs
 from preprocessing.data_preparation import AnnDataCreator
@@ -25,7 +24,7 @@ class TestAnnPreparation(TestCase):
     image = r.Raster.from_array(
         empty_array_image,
         pixel=rc.Pixel(1.0, 1.0),
-        extent=g.Extent.from_coordinates([0, 0, 1, 1], crs=Crs(epsg="epsg:2180"))
+        extent=Extent.from_coordinates([0, 0, 1, 1], crs=Crs(epsg="epsg:2180"))
     )
     label = r.Raster.from_array(
         empty_array_label,

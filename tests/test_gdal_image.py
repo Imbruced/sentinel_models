@@ -3,6 +3,8 @@ from unittest import TestCase
 
 import gdal
 import numpy as np
+from keras.callbacks import EarlyStopping, ReduceLROnPlateau, ModelCheckpoint
+from keras.optimizers import SGD
 from sklearn.preprocessing import StandardScaler
 
 from config.options_read import DefaultOptionRead
@@ -16,9 +18,11 @@ from gis.crs import Crs
 from gis.wkt import Wkt
 from logs import logger
 from exceptions import OptionNotAvailableException
-from plotting.plotting import InteractiveGeometryPlotter
+from models import UnetConfig, Unet
+from plotting.plotting import InteractiveGeometryPlotter, SubPlots
 from preprocessing.data_preparation import RasterData
 from preprocessing.image_standarizer import ImageStand
+from readers.image import ImageReaderFactory
 from utils.cls_finder import ClsFinder
 from writers.image import ImageWriterFactory
 
@@ -28,7 +32,6 @@ TEST_IMAGE_PATH = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pict
 class TestImageDataModule(TestCase):
     cls_finder = ClsFinder(__name__)
     empty_raster = Raster.empty()
-    image_writer = ImageWriterFactory(data=empty_raster)
     path = os.path.join(os.getcwd(), "test_data")
 
     POLYGON = "Polygon((110.0 110.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 110.0))"
@@ -71,27 +74,32 @@ class TestImageDataModule(TestCase):
         logger.info(self.cls_finder.available_cls)
 
     def test_writers(self):
+        image_writer = ImageWriterFactory(data=self.empty_raster)
         self.assertGreater(
-            self.image_writer.writers.__len__(),
+            image_writer.writers.__len__(),
             1,
-            self.image_writer.writers
+            image_writer.writers
         )
-        logger.info(self.image_writer.writers)
+        logger.info(image_writer.writers)
 
     def test_options_keys(self):
-        self.image_writer.format("png")
+        image_writer = ImageWriterFactory(data=self.empty_raster)
+        image_writer.format("png")
         with self.assertRaises(OptionNotAvailableException):
-            self.image_writer.options(random_key=10)
-            self.image_writer.options(another_random_key=10)
+            image_writer.format("png").options(random_key=10)
+            image_writer.format("png").options(another_random_key=10)
 
     def test_options_values(self):
+        image_writer = ImageWriterFactory(data=self.empty_raster)
         with self.assertRaises(FormatNotAvailable):
-            self.image_writer.format("gtp").save("empty_path")
+            image_writer.format("gtp").save("empty_path")
 
     def test_available_format(self):
-        self.image_writer.format("geotiff")
+        image_writer = ImageWriterFactory(data=self.empty_raster)
+        image_writer.format("geotiff")
 
     def test_save_png(self):
+        image_writer = ImageWriterFactory(data=self.empty_raster)
         file_path = os.path.join(self.path, "output.png")
         if not os.path.exists(self.path):
             os.mkdir(self.path)
@@ -99,26 +107,28 @@ class TestImageDataModule(TestCase):
             os.remove(file_path)
         except FileNotFoundError:
             pass
-        self.image_writer.format("png").save(file_path)
+        image_writer.format("png").save(file_path)
 
     def test_save_geotiff(self):
+        image_writer = ImageWriterFactory(data=self.empty_raster)
         file_path = os.path.join(self.path, "output.tif")
         try:
             os.remove(file_path)
         except FileNotFoundError:
             pass
-        self.image_writer.format("geotiff").options(dtype=gdal.GDT_Byte).save(file_path)
+        image_writer.format("geotiff").options(dtype=gdal.GDT_Byte).save(file_path)
 
     def test_format_image_reader(self):
-        reader = ImageReader().format("png")
+        reader = ImageReaderFactory().format("png")
         self.assertEqual(reader.io_options, DefaultOptionRead.png())
 
     def test_format_in_options(self):
+        image_writer = ImageWriterFactory(data=self.empty_raster)
         with self.assertRaises(AttributeError):
-            self.image_writer.options(format="png")
+            image_writer.options(format="png")
 
     def test_loading_geotiff(self):
-        image_reader = ImageReader().format("geotiff").load(
+        image_reader = ImageReaderFactory().format("geotiff").load(
             TEST_IMAGE_PATH
         )
 
@@ -165,6 +175,7 @@ class TestImageDataModule(TestCase):
             save(TEST_FILE)
 
     def test_reading_geotif(self):
+        print("s")
         raster = Raster \
             .read \
             .format("geotiff") \
@@ -313,8 +324,8 @@ class TestImageDataModule(TestCase):
         with self.assertRaises(CrsException):
             image = Raster \
                 .read \
-                .options(crs=Crs("epsg:4326")) \
                 .format("geotiff") \
+                .options(crs=Crs("epsg:4326")) \
                 .load(TEST_IMAGE_PATH)
 
             label = Raster \
@@ -375,48 +386,48 @@ class TestImageDataModule(TestCase):
         cnt = standarized[(standarized >= 2.73777289) & (standarized <= 3.0)]
         self.assertEqual(cnt.size, 4135)
 
-    # def test_unet_model(self):
-    #     image = Raster \
-    #         .read \
-    #         .format("geotiff") \
-    #         .load(TEST_IMAGE_PATH)
-    #
-    #     label: Raster = Raster \
-    #         .read \
-    #         .format("shp") \
-    #         .options(
-    #         pixel=image.pixel,
-    #         extent=image.extent
-    #     ) \
-    #         .load(self.shape_path)
-    #
-    #     standarize1 = ImageStand(raster=image)
-    #     standarized = standarize1.standarize_image(StandardScaler())
-    #     raster_data = RasterData(standarized, label)
-    #     unet_images = raster_data.prepare_unet_images(image_size=(64, 64))
-    #
-    #     callbacks = [
-    #         EarlyStopping(patience=100, verbose=1),
-    #         ReduceLROnPlateau(factor=0.1, patience=100, min_lr=0, verbose=1),
-    #         ModelCheckpoint('model_more_class_pixels.h5', verbose=1, save_best_only=True, save_weights_only=False)
-    #     ]
-    #     config = UnetConfig(
-    #         input_size=[64, 64, 3],
-    #         metrics=["accuracy"],
-    #         optimizer=SGD(lr=0.001),
-    #         callbacks=callbacks,
-    #         loss="binary_crossentropy",
-    #
-    #     )
-    #     #
-    #     unet = Unet(config=config)
-    #     unet.compile()
-    #     unet.fit(unet_images, epochs=1)
-    #     predicted = unet.predict(x=unet_images.x_test[0], threshold=0.4)
-    #     SubPlots().extend(
-    #         predicted,
-    #         unet_images.x_test[0]
-    #     ).plot(nrows=1)
+    def test_unet_model(self):
+        image = Raster \
+            .read \
+            .format("geotiff") \
+            .load(TEST_IMAGE_PATH)
+
+        label: Raster = Raster \
+            .read \
+            .format("shp") \
+            .options(
+            pixel=image.pixel,
+            extent=image.extent
+        ) \
+            .load(self.shape_path)
+
+        standarize1 = ImageStand(raster=image)
+        standarized = standarize1.standarize_image(StandardScaler())
+        raster_data = RasterData(standarized, label)
+        unet_images = raster_data.prepare_unet_images(image_size=(64, 64))
+
+        callbacks = [
+            EarlyStopping(patience=100, verbose=1),
+            ReduceLROnPlateau(factor=0.1, patience=100, min_lr=0, verbose=1),
+            ModelCheckpoint('model_more_class_pixels.h5', verbose=1, save_best_only=True, save_weights_only=False)
+        ]
+        config = UnetConfig(
+            input_size=[64, 64, 3],
+            metrics=["accuracy"],
+            optimizer=SGD(lr=0.001),
+            callbacks=callbacks,
+            loss="binary_crossentropy",
+
+        )
+        #
+        unet = Unet(config=config)
+        unet.compile()
+        unet.fit(unet_images, epochs=1)
+        predicted = unet.predict(x=unet_images.x_test[0], threshold=0.4)
+        SubPlots().extend(
+            predicted,
+            unet_images.x_test[0]
+        ).plot(nrows=1)
 
     def test_show_tru_color_image(self):
         image = Raster \

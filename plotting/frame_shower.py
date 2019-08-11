@@ -1,3 +1,9 @@
+from typing import Iterable
+
+import pandas
+import attr
+
+
 @attr.s
 class DataFrameShower:
     MARGIN = 2

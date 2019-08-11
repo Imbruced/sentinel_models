@@ -7,6 +7,8 @@ import geopandas as gpd
 from gis.crs import Crs
 from exceptions.exceptions import GeometryCollectionError
 from exceptions.exceptions import GeometryTypeError
+from plotting.frame_shower import DataFrameShower
+from plotting.plotting import InteractiveGeometryPlotter
 
 scriptDirectory = os.path.dirname(os.path.realpath(__file__))
 
