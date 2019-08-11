@@ -49,7 +49,7 @@ class GdalImage:
             projection = ds.GetProjection()
             srs = osr.SpatialReference(wkt=projection)
             crs_gdal = srs.GetAttrValue('AUTHORITY', 0).lower() + ":" + srs.GetAttrValue('AUTHORITY', 1)
-            crs = c.Crs(crs_gdal)
+            crs = Crs(crs_gdal)
         return cls(ds, path, crs)
 
     @classmethod
