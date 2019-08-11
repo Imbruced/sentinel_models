@@ -11,6 +11,7 @@ matplotlib="*"
 keras = "==2.2.4"
 attrs = "==17.2.0"
 Fiona = "==1.8.6"
+gdal = "*"
 
 [requires]
 python_version = "3.6"

@@ -1,6 +1,10 @@
+import abc
+from typing import Dict
+
 import attr
 
-from data_aquiring.io_abstract import Options, DefaultOptionWrite
+from config.options import Options
+from config.options_write import DefaultOptionWrite
 from exceptions.exceptions import FormatNotAvailable
 from abstract.io_handler import IoHandler
 
@@ -17,7 +21,7 @@ class Writer(IoHandler):
         current_options = super().options(**kwargs)
         return self.__class__(data=self.data, io_options=current_options)
 
-    def format(self, format):
+    def format(self, format: str):
         try:
             default_options = getattr(DefaultOptionWrite, format)()
         except AttributeError:
@@ -27,3 +31,11 @@ class Writer(IoHandler):
             data=self.data,
             io_options=default_options
         )
+
+    @property
+    def format_name(self):
+        raise NotImplementedError()
+
+    @format_name.setter
+    def format_name(self, value: str):
+        raise NotImplementedError

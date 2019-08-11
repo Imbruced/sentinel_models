@@ -3,10 +3,11 @@ import gdal
 import osr
 
 from gis.gdal_image import GdalImage
+from writers.writer import Writer
 
 
 @attr.s
-class GeoTiffImageWriter:
+class GeoTiffImageWriter(Writer):
     format_name = "geotiff"
     data = attr.ib()
     io_options = attr.ib()

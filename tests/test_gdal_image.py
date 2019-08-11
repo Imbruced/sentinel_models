@@ -7,17 +7,20 @@ from sklearn.preprocessing import StandardScaler
 
 from config.options_read import DefaultOptionRead
 from exceptions.exceptions import FormatNotAvailable, CrsException
-from gis import Raster
-from gis.geometry import Origin, Wkt, Point, Extent, GeometryFrame, Polygon, InteractiveGeometryPlotter
+from gis import Raster, Point, Extent, GeometryFrame
 from gis.gdal_image import GdalImage
+from gis.origin import Origin
+from gis.polygon import Polygon
 from gis.raster_components import Pixel
 from gis.crs import Crs
+from gis.wkt import Wkt
 from logs import logger
 from exceptions import OptionNotAvailableException
+from plotting.plotting import InteractiveGeometryPlotter
 from preprocessing.data_preparation import RasterData
 from preprocessing.image_standarizer import ImageStand
 from utils.cls_finder import ClsFinder
-from writers.image import ImageWriter
+from writers.image import ImageWriterFactory
 
 TEST_IMAGE_PATH = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pictures\\buildings.tif"
 
@@ -25,7 +28,7 @@ TEST_IMAGE_PATH = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pict
 class TestImageDataModule(TestCase):
     cls_finder = ClsFinder(__name__)
     empty_raster = Raster.empty()
-    image_writer = ImageWriter(data=empty_raster)
+    image_writer = ImageWriterFactory(data=empty_raster)
     path = os.path.join(os.getcwd(), "test_data")
 
     POLYGON = "Polygon((110.0 110.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 110.0))"

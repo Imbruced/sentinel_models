@@ -1,15 +1,20 @@
+from typing import Dict, List
+
 import attr
 
+from abstract.io_handler import ReadAbstractFactory
 from config.options import Options
 from config.options_read import DefaultOptionRead
 from exceptions import OptionNotAvailableException
+from exceptions.exceptions import FormatNotAvailable
 from readers.reader import Reader
+from writers.writer import Writer
 
 
 @attr.s
-class ImageReader(Reader):
+class ImageReaderFactory(ReadAbstractFactory):
 
-    io_options = attr.ib(type=Options, default=getattr(DefaultOptionRead, "wkt")())
+    io_options = attr.ib(default=None)
 
     def load(self, path) -> 'Raster':
         image_format = self.__get_reader()
@@ -18,14 +23,29 @@ class ImageReader(Reader):
             path=path
         ).load()
 
-        return reader
+    def format(self, format: str):
+        try:
+            default_options = getattr(DefaultOptionRead, format)()
+        except AttributeError:
+            raise FormatNotAvailable("Can not found requested format")
+        return self.__class__(
+            io_options=default_options
+        )
 
     @property
-    def readers(self):
-        return self.available_cls(r"(\w+)ImageReader", __name__)
+    def readers(self) -> Dict[str, 'Reader']:
+        return {cl.format_name: cl for cl in self.available_cls()}
 
-    def __str_readers(self):
-        return ", ".join(self.available_cls(r"(\w+)ImageReader", __name__))
+    @property
+    def __str_writers(self):
+        return ", ".join([self.readers[key].format_name for key in self.writers])
+
+    def get_cls(self, name: str) -> 'Reader':
+        return self.readers[name]
+
+    def available_cls(self) -> List['Writer']:
+        from readers import readers
+        return readers
 
     def __get_reader(self):
         """TODO to simplify or move to upper class"""
@@ -33,3 +53,7 @@ class ImageReader(Reader):
         if image_format not in self.readers:
             raise OptionNotAvailableException(f"Option {image_format} is not implemented \n available options {self.__str_readers}")
         return image_format
+
+    def options(self, **kwargs) -> 'ImageReaderFactory':
+        io_options = super().options(**kwargs).io_options
+        return ImageReaderFactory(io_options)

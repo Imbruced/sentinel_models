@@ -7,9 +7,9 @@ import osr
 import ogr
 
 from exceptions.exceptions import DimensionException
-from gis import geometry as g
-from gis import crs as c
-from gis import raster_components as rc
+from gis import Point, Extent
+from gis.crs import Crs
+from gis.raster_components import ReferencedArray
 from preprocessing.abstract import ImageFile
 
 
@@ -18,9 +18,10 @@ class GdalImage:
 
     ds = attr.ib(type=gdal.Dataset)
     path = attr.ib(default=None)
-    crs = attr.ib(default=c.Crs("local"))
+    crs = attr.ib(default=Crs("local"))
 
     def __attrs_post_init__(self):
+        from gis import Pixel
         self.__transform_params = self.ds.GetGeoTransform()
         self.left_x = self.__transform_params[0]
         self.pixel_size_x = self.__transform_params[1]
@@ -28,8 +29,8 @@ class GdalImage:
         self.pixel_size_y = -self.__transform_params[5]
         self.x_size = self.ds.RasterXSize
         self.y_size = self.ds.RasterYSize
-        self.pixel = rc.Pixel(abs(self.pixel_size_x), abs(self.pixel_size_y))
-        self.extent = g.Extent.from_coordinates([
+        self.pixel = Pixel(abs(self.pixel_size_x), abs(self.pixel_size_y))
+        self.extent = Extent.from_coordinates([
             self.left_x, self.top_y - (self.y_size * abs(self.pixel_size_y)),
             self.left_x + abs(self.pixel_size_x) * self.x_size, self.top_y
         ], self.crs)
@@ -52,7 +53,7 @@ class GdalImage:
         return cls(ds, path, crs)
 
     @classmethod
-    def in_memory(cls, x_shape, y_shape, crs=c.Crs("epsg:4326")):
+    def in_memory(cls, x_shape, y_shape, crs=Crs("epsg:4326")):
         memory_ob = gdal.GetDriverByName('MEM')
         raster = memory_ob.Create('', x_shape, y_shape, 1, gdal.GDT_Byte)
         if raster is None:
@@ -63,8 +64,8 @@ class GdalImage:
     def from_extent(cls, extent, pixel):
         new_extent = extent.scale(pixel.x, pixel.y)
 
-        extent_new = g.Extent(g.Point(extent.origin.x, extent.origin.y),
-                            g.Point((new_extent.origin.x + new_extent.dx) * pixel.x,
+        extent_new = Extent(Point(extent.origin.x, extent.origin.y),
+                            Point((new_extent.origin.x + new_extent.dx) * pixel.x,
                                   (new_extent.origin.y + new_extent.dy) * pixel.y))
 
         raster = cls.in_memory(int(new_extent.dx), int(new_extent.dy), crs=extent.crs)
@@ -89,7 +90,7 @@ class GdalImage:
         """
         return self.__read_as_array(self.ds)
 
-    def to_raster(self) -> Tuple[rc.Pixel, rc.ReferencedArray]:
+    def to_raster(self) -> Tuple['Pixel', 'ReferencedArray']:
         if self.array.shape.__len__() == 3:
             arr = self.array
         elif self.array.shape.__len__() == 2:
@@ -97,7 +98,7 @@ class GdalImage:
         else:
             raise DimensionException("Array should be shape 2 or 3")
 
-        ref = rc.ReferencedArray(
+        ref = ReferencedArray(
             array=arr.transpose([1, 2, 0]),
             crs=self.crs,
             extent=self.extent,
@@ -107,7 +108,7 @@ class GdalImage:
         )
         return self.pixel, ref
 
-    def transform(self, origin: g.Origin, pixel: rc.Pixel, projection='LOCAL_CS["arbitrary"]'):
+    def transform(self, origin: 'Origin', pixel: 'Pixel', projection='LOCAL_CS["arbitrary"]'):
         self.ds.SetGeoTransform((origin.x, pixel.x, 0.0, origin.y + (self.y_size * pixel.y), 0, -pixel.y))
         left_top_corner_x, pixel_size_x, _, left_top_corner_y, _, pixel_size_y = self.ds.GetGeoTransform()
         self.ds.SetProjection(projection)

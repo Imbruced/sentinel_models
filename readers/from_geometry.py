@@ -3,18 +3,19 @@ from abc import ABC
 import attr
 
 from exceptions import CrsException
-from gis import Pixel, Extent, Point, GeometryFrame, Raster
 from gis.gdal_image import GdalImage
-from gis.geometry import Wkt
+from gis.wkt import Wkt
 
 
 @attr.s
 class RasterFromGeometryReader(ABC):
+    from gis.crs import Crs
     path = attr.ib()
     io_options = attr.ib()
 
     @classmethod
     def wkt_to_gdal_raster(cls, default_extent, options):
+        from gis import Pixel
         extent = options.get(
             "extent",
             default_extent.expand_percentage_equally(0.3)
@@ -33,6 +34,8 @@ class RasterFromGeometryReader(ABC):
 
     @classmethod
     def _find_extent_from_multiple_wkt(cls, wkt_value_list, crs=Crs("epsg:4326")):
+        from gis import Extent, Point
+
         bottom_corners = [el[0].extent.left_down for el in wkt_value_list]
         top_corners = [el[0].extent.right_up for el in wkt_value_list]
 
@@ -49,6 +52,8 @@ class RasterFromGeometryReader(ABC):
         return extent
 
     def load(self):
+        from gis import Raster
+        from gis import GeometryFrame
         geoframe = GeometryFrame.from_file(self.path, self.io_options["driver"]).to_wkt()
 
         crs = self.io_options.get("crs", geoframe.crs)
@@ -66,7 +71,7 @@ class RasterFromGeometryReader(ABC):
         pixel, ref = gdal_raster.to_raster()
         return Raster(pixel=pixel, ref=ref)
 
-    def __add_value_column(self, gdf: GeometryFrame):
+    def __add_value_column(self, gdf: 'GeometryFrame'):
         all_unique = self.io_options["all_unique"]
         gdf = gdf.frame
         if self.io_options["color_column"] is not None:
@@ -99,6 +104,7 @@ class WktImageReader(RasterFromGeometryReader):
     format_name = "wkt"
 
     def load(self):
+        from gis import Raster
         wkt: Wkt = Wkt(self.path)
         gdal_raster = self.wkt_to_gdal_raster(wkt.extent, self.io_options)
 

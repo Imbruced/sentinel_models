@@ -3,22 +3,23 @@ from typing import Tuple
 import numpy as np
 import attr
 
-from gis.geometry import Extent, Point
+from gis.extent import Extent
+from gis.point import Point
 from interfaces.image_stand import Standarizer
-from utils.decorators import classproperty
+from readers.image import ImageReaderFactory
+from utils.decorators import classproperty, lazy_property
 from gis.gdal_image import GdalImage
-from gis.geometry import lazy_property
-from readers.image import ImageReader
-from writers.image import ImageWriter
 from gis.raster_components import ReferencedArray, Pixel
 from plotting import ImagePlot
 from preprocessing.scalers import RangeScaler
+from writers.image import ImageWriterFactory
+
 
 @attr.s
 class RasterCreator:
 
     @classmethod
-    def empty_raster(cls, extent: Extent, pixel: Pixel) -> Tuple[Pixel, ReferencedArray]:
+    def empty_raster(cls, extent: 'Extent', pixel: Pixel) -> Tuple[Pixel, ReferencedArray]:
         transformed_raster, extent_new = GdalImage.from_extent(extent, pixel)
         return cls.to_raster(transformed_raster, pixel)
 
@@ -138,10 +139,10 @@ class Raster(np.ndarray):
         on the fly is not supported.
         :return: 'ImageReader'
         """
-        return ImageReader()
+        return ImageReaderFactory()
 
     @property
-    def write(self) -> 'ImageWriter':
+    def write(self) -> 'ImageWriterFactory':
         """
         This function allows to write data into formats like:
         PNG
@@ -153,9 +154,9 @@ class Raster(np.ndarray):
             .format("geotiff")\
             .save("file_path")
         Reference will be created for GeoTiff file based on extent and crs instance attributes
-        :return: 'ImageWriter'
+        :return: 'ImageWriterFactory'
         """
-        return ImageWriter(data=self)
+        return ImageWriterFactory(data=self)
 
     @classmethod
     def from_array(cls, array, pixel, extent=Extent(Point(0, 0), Point(1, 1))):

@@ -3,7 +3,6 @@ import json
 import attr
 import numpy as np
 
-from gis.raster import Raster
 from gis.raster_components import ReferencedArray
 from preprocessing.scalers import StanarizeParams
 
@@ -33,6 +32,7 @@ class ImageStand:
             file.writelines(params_json)
 
     def standarize_image(self, scaler=None):
+        from gis.raster import Raster
         """
         Rescale data by maximum
         :return:
@@ -66,3 +66,4 @@ class ImageStand:
 
         self.stan_params.add(fitted, band_name)
         return fitted.transform(array)
+

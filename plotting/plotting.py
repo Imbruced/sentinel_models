@@ -1,8 +1,6 @@
-from typing import Union
-
 import attr
+import folium
 
-from logs.log_lib import logger
 import matplotlib.pyplot as plt
 
 
@@ -67,3 +65,26 @@ class ImagePlot:
 
     def extend(self, *arrays):
         return SubPlots([self.image, *arrays])
+
+
+@attr.s
+class InteractiveGeometryPlotter:
+    gdf = attr.ib(type='GeometryFrame')
+
+    def plot(self, **kwargs):
+        limit = kwargs.get("limit", 100)
+        if self.gdf.frame.shape[0] >= 1:
+            transformed_frame = self.gdf.transform("epsg:4326")
+            first_polygon = transformed_frame.frame["geometry"].head(1).values[0]
+            centroid = first_polygon.centroid
+            coordinates = [centroid.y, centroid.x]
+        else:
+            coordinates = [40.7, -74]
+        m = folium.Map(coordinates, **kwargs)
+
+        folium.GeoJson(self.gdf.frame.iloc[:limit]).add_to(m)
+
+        return m
+
+    def __prepare_data_for_plotting(self):
+        pass

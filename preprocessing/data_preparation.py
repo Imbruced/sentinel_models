@@ -7,10 +7,9 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from exceptions.exceptions import PixelSizeException, DimensionException
-from gis import raster as r
-from gis.geometry import lazy_property
 from gis.raster_components import create_two_dim_chunk
 from gis.raster_components import ArrayShape
+from utils.decorators import lazy_property
 
 
 @attr.s

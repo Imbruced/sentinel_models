@@ -1,7 +1,6 @@
 import attr
 
 from gis.gdal_image import GdalImage
-from gis.raster import Raster
 
 
 @attr.s
@@ -12,6 +11,7 @@ class GeoTiffImageReader:
     format_name = "geotiff"
 
     def load(self):
+        from gis.raster import Raster
 
         gdal_image = GdalImage.load_from_file(
             self.path,

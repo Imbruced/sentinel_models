@@ -1,9 +1,11 @@
 import attr
 from PIL import Image
 
+from writers.writer import Writer
+
 
 @attr.s
-class PngImageWriter:
+class PngImageWriter(Writer):
     format_name = "png"
     data = attr.ib()
     io_options = attr.ib()
