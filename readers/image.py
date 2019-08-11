@@ -17,6 +17,8 @@ class ImageReaderFactory(ReadAbstractFactory):
     io_options = attr.ib(default=None)
 
     def load(self, path) -> 'Raster':
+        if self.io_options is None:
+            raise AttributeError("Please use format first")
         image_format = self.__get_reader()
         raster: 'Raster' = self.readers[image_format](
             io_options=self.io_options,
