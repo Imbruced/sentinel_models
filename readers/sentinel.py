@@ -1,9 +1,10 @@
 import attr
 
+from readers.reader import Reader
 
 
 @attr.s
-class SentinelImageReader:
+class SentinelImageReader(Reader):
     io_options = attr.ib()
     format_name = "sentinel"
     data = attr.ib()

@@ -1,14 +1,13 @@
-from abc import ABC
-
 import attr
 
 from exceptions import CrsException
 from gis.gdal_image import GdalImage
 from gis.wkt import Wkt
+from readers.reader import Reader
 
 
 @attr.s
-class RasterFromGeometryReader(ABC):
+class RasterFromGeometryReader(Reader):
     from gis.crs import Crs
     path = attr.ib()
     io_options = attr.ib()
@@ -87,6 +86,14 @@ class RasterFromGeometryReader(ABC):
             gdf["raster_value"] = self.io_options["value"]
 
         return gdf
+
+    @property
+    def format_name(self):
+        return NotImplementedError
+
+    @format_name.setter
+    def format_name(self, value):
+        raise NotImplementedError
 
 
 @attr.s

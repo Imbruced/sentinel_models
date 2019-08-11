@@ -8,7 +8,7 @@ from abstract.io_handler import IoHandler
 class Reader(IoHandler):
     io_options = attr.ib(type=Options)
 
-    def load(self, path: str):
+    def load(self):
         return NotImplemented()
 
     @property

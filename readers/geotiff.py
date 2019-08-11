@@ -1,10 +1,11 @@
 import attr
 
 from gis.gdal_image import GdalImage
+from readers.reader import Reader
 
 
 @attr.s
-class GeoTiffImageReader:
+class GeoTiffImageReader(Reader):
 
     path = attr.ib()
     io_options = attr.ib()

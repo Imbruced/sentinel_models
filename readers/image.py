@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Type
 
 import attr
 
@@ -35,17 +35,17 @@ class ImageReaderFactory(ReadAbstractFactory):
         )
 
     @property
-    def readers(self) -> Dict[str, 'Reader']:
+    def readers(self) -> Dict[str, Type['Reader']]:
         return {cl.format_name: cl for cl in self.available_cls()}
 
     @property
     def __str_readers(self):
         return ", ".join([self.readers[key].format_name for key in self.readers])
 
-    def get_cls(self, name: str) -> 'Reader':
+    def get_cls(self, name: str) -> Type['Reader']:
         return self.readers[name]
 
-    def available_cls(self) -> List['Writer']:
+    def available_cls(self) -> List[Type['Reader']]:
         from readers import readers
         return readers
 

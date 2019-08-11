@@ -2,8 +2,6 @@ import shutil
 from datetime import datetime
 from unittest import TestCase
 
-from gis.preprocessing import SentinelDownloader, User, unzip_sentinel_data_based_on_key, move_the_data_and_remove, \
-    move_the_data_full_process_based_on_key, GdalMerge
 
 USER = "pkocinski001"
 PASSWORD = "Kojack.0116!"
@@ -61,3 +59,4 @@ class TestSentinelApi(TestCase):
             ],
             output_location="C:\\Users\\Pawel\\Desktop\\sentinel_models\data\\sentinel_out\\res.tiff"
         ).execute()
+
