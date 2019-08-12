@@ -219,5 +219,6 @@ class SentinelDownloader:
 
 
 SentinelDownloader(
-    user=User(name="pawel")
+    user=User(name="pawel"),
+
 )
