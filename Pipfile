@@ -10,16 +10,20 @@ pandas = "==0.24.2"
 matplotlib="*"
 keras = "==2.2.4"
 attrs = "==19.1.0"
-Fiona = "==1.8.6"
 tensorflow = "==1.12"
 scipy= "==1.1.0"
 requests = "==2.22.0"
 folium = "==0.9.1"
 tensorflow-gpu = "==1.12.0"
 psycopg2 = "==2.7.6.1"
-shapely = "==1.6.4"
 sqlalchemy = "==1.2.14"
-
+gdal = {path = "./packages/GDAL-2.4.1-cp36-cp36m-win_amd64.whl"}
+fiona = {path = "./packages/Fiona-1.8.6-cp36-cp36m-win_amd64.whl"}
+shapely = {path = "./packages/Shapely-1.6.4.post2-cp36-cp36m-win_amd64.whl"}
+sentinelhub="==2.4.6"
+sentinelsat="==0.13"
+scikit-learn="==0.20.1"
+geopandas="==0.3.0"
 
 [requires]
 python_version = "3.6"
