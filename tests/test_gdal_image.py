@@ -26,7 +26,7 @@ from readers.image import ImageReaderFactory
 from utils.cls_finder import ClsFinder
 from writers.image import ImageWriterFactory
 
-TEST_IMAGE_PATH = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pictures\\buildings.tif"
+TEST_IMAGE_PATH = "data\\pictures\\buildings.tif"
 
 
 class TestImageDataModule(TestCase):
@@ -37,7 +37,7 @@ class TestImageDataModule(TestCase):
     POLYGON = "Polygon((110.0 110.0, 110.0 120.0, 120.0 120.0, 120.0 110.0, 110.0 110.0))"
     LINESTRING = "LINESTRING(-71.160281 42.258729,-71.160837 42.259113,-71.161144 42.25932)"
     POINT = "POINT(-71 42)"
-    shape_path = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\shapes\\domy.shp"
+    shape_path = "data\\shapes\\domy.shp"
 
     def test_gdal_image_from_file(self):
         gd = GdalImage.load_from_file(TEST_IMAGE_PATH, "epsg:4326")
@@ -149,7 +149,7 @@ class TestImageDataModule(TestCase):
 
     def test_save_to_geotiff(self):
 
-        TEST_FILE = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pictures\\test.tif"
+        TEST_FILE = "data\\pictures\\test.tif"
         try:
             os.remove(TEST_FILE)
         except Exception as e:
@@ -163,7 +163,7 @@ class TestImageDataModule(TestCase):
 
     def test_save_to_png(self):
 
-        TEST_FILE = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pictures\\test.png"
+        TEST_FILE = "data\\pictures\\test.png"
         try:
             os.remove(TEST_FILE)
         except Exception as e:
@@ -358,15 +358,15 @@ class TestImageDataModule(TestCase):
         # print(images.x_train[1].shape)
         images.x[0].write \
             .format("geotiff") \
-            .save("C:\\Users\\Pawel\\Desktop\\sentinel_models\\data\\image_0.tif")
+            .save("data\\image_0.tif")
 
         images.x[1].write \
             .format("geotiff") \
-            .save("C:\\Users\\Pawel\\Desktop\\sentinel_models\\data\\image_1.tif")
+            .save("data\\image_1.tif")
 
         images.x[2].write \
             .format("geotiff") \
-            .save("C:\\Users\\Pawel\\Desktop\\sentinel_models\\data\\image_2.tif")
+            .save("data\\image_2.tif")
 
     def test_extent_split(self):
         extent = Extent.from_coordinates([20.0, 20.0, 50.0, 50.0], "epsg:2180").divide_dy(5.1)
