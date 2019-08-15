@@ -122,19 +122,6 @@ class GeometryFrame:
         return self.frame.head(limit)
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 def cast_float(string: str):
     try:
         casted = float(string)
