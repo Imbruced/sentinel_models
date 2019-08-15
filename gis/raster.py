@@ -1,8 +1,9 @@
-from typing import Tuple
+from typing import Tuple, NoReturn
 
 import numpy as np
 import attr
 
+from gis.crs import Crs
 from gis.extent import Extent
 from gis.point import Point
 from interfaces.image_stand import Standarizer
@@ -112,7 +113,7 @@ class Raster(np.ndarray):
         return results[0] if len(results) == 1 else results
 
     @classproperty
-    def read(self) -> 'ImageReader':
+    def read(self) -> ImageReaderFactory:
         """
         This function returns ImageReader which allows you to read the data from various formats in
         Apache Spark style, Example:
@@ -142,7 +143,7 @@ class Raster(np.ndarray):
         return ImageReaderFactory()
 
     @property
-    def write(self) -> 'ImageWriterFactory':
+    def write(self) -> ImageWriterFactory:
         """
         This function allows to write data into formats like:
         PNG
@@ -159,14 +160,13 @@ class Raster(np.ndarray):
         return ImageWriterFactory(data=self)
 
     @classmethod
-    def from_array(cls, array, pixel, extent=Extent(Point(0, 0), Point(1, 1))):
+    def from_array(cls, array, pixel, extent=Extent(Point(0, 0), Point(1, 1))) -> 'Raster':
         array_copy = array
         ref = ReferencedArray(array=array_copy, crs=extent.crs, extent=extent, shape=array.shape[:2])
-        raster_ob = cls(pixel, ref)
-        return raster_ob
+        return Raster(pixel, ref)
 
     @classmethod
-    def empty(cls, extent: Extent = Extent(), pixel: Pixel = Pixel(0.1, 0.1)):
+    def empty(cls, extent: Extent = Extent(), pixel: Pixel = Pixel(0.1, 0.1)) -> 'Raster':
         raster_ob = RasterCreator.empty_raster(pixel=pixel, extent=extent)
         return Raster(pixel=raster_ob[0], ref=raster_ob[1])
 
@@ -174,8 +174,7 @@ class Raster(np.ndarray):
     def array(self):
         return self.ref.array
 
-    def show(self, true_color=False):
-        print(self)
+    def show(self, true_color: bool = False) -> NoReturn:
         if not true_color:
             plotter = ImagePlot(self[:, :, 0])
         else:
@@ -190,9 +189,9 @@ class Raster(np.ndarray):
         plotter.plot()
 
     @lazy_property
-    def extent(self):
+    def extent(self) -> Extent:
         return self.ref.extent
 
     @lazy_property
-    def crs(self):
+    def crs(self) -> Crs:
         return self.extent.crs
