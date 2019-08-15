@@ -5,7 +5,7 @@ import attr
 from exceptions import PixelSizeException
 from exceptions.exceptions import DimensionException
 from gis.raster_components import ArrayShape
-from preprocessing.data_creators import UnetDataCreator, AnnDataCreator
+from preprocessing.data_creators import UnetDataCreator, AnnDataCreator, CnnDataCreator
 from preprocessing.data_preparation import ModelData
 
 
@@ -44,8 +44,12 @@ class RasterData:
                     label=self.label,
                 ).create()
 
-    def prepare_cnn_data(self, image_size: List[int], remove_empty_labels=True, threshold=0.0):
-        pass
+    def prepare_cnn_data(self, window_size: int, remove_empty_labels=True, threshold=0.0):
+        return CnnDataCreator(
+            image=self.image,
+            label=self.label,
+            window_size=window_size
+        ).create()
 
     def assert_equal_size(self):
         shape_1 = ArrayShape(self.label.array.shape[:2])
