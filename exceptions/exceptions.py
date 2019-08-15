@@ -54,3 +54,9 @@ class FormatNotAvailable(Exception):
 class DimensionException(Exception):
     def __init__(self, message):
         super().__init__(message)
+
+
+class SizeException(Exception):
+
+    def __init__(self, message):
+        super().__init__(message)
