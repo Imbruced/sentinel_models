@@ -2,10 +2,10 @@ from unittest import TestCase
 
 import numpy as np
 
-from gis import raster as r, Extent
+from gis import raster as r, Extent, Raster, Pixel
 from gis import raster_components as rc
 from gis.crs import Crs
-from preprocessing.data_preparation import AnnDataCreator
+from preprocessing.data_creators import AnnDataCreator, split_images_to_cnn
 
 TEST_IMAGE_PATH = "C:\\Users\\Pawel\\Desktop\\sentinel_models\\tests\\data\\pictures\\buildings.tif"
 
@@ -79,3 +79,76 @@ class TestAnnPreparation(TestCase):
         ])
         self.assertEqual(np.array_equal(target_test_x, self.ann_data.create().x_test), True)
         self.assertEqual(np.array_equal(target_test_y, self.ann_data.create().y_test), True)
+
+    def test_split_image_to_cnn(self):
+        px = Pixel(1.0, 1.0)
+        epsg_4326 = Crs("epsg:4326")
+        image_array = np.array(
+            [
+                [*list(range(1, 8))],
+                [*list(range(2, 9))],
+                [*list(range(3, 10))],
+                [*list(range(4, 11))],
+                [*list(range(5, 12))],
+                [*list(range(10, 17))],
+                [*list(range(20, 27))]
+            ]
+        ).reshape(7, 7, 1)
+
+        image = Raster.from_array(
+            image_array,
+            extent=Extent.from_coordinates([0, 0, 7.0, 7.0], epsg_4326),
+            pixel=px
+        )
+
+        target_result = [
+            Raster.from_array(
+                image_array[0:5, 0:5],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            ),
+            Raster.from_array(
+                image_array[0:5, 1:6],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            ),
+            Raster.from_array(
+                image_array[0:5, 2:7],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            ),
+            Raster.from_array(
+                image_array[1:6, 0:5],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            ),
+            Raster.from_array(
+                image_array[1:6, 1:6],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            ),
+            Raster.from_array(
+                image_array[1:6, 2:7],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            ),
+            Raster.from_array(
+                image_array[2:7, 0:5],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            ),
+            Raster.from_array(
+                image_array[2:7, 1:6],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            ),
+            Raster.from_array(
+                image_array[2:7, 2:7],
+                extent=Extent.from_coordinates([0, 0, 1, 1], crs=epsg_4326),
+                pixel=px
+            )
+        ]
+
+        function_result = split_images_to_cnn(image=image, window_size=5)
+
+        self.assertEqual(target_result, function_result)
