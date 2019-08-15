@@ -20,8 +20,8 @@ from logs import logger
 from exceptions import OptionNotAvailableException
 from models import UnetConfig, Unet
 from plotting.plotting import InteractiveGeometryPlotter, SubPlots
-from preprocessing.data_preparation import RasterData
 from preprocessing.image_standarizer import ImageStand
+from preprocessing.raster_data import RasterData
 from readers.image import ImageReaderFactory
 from utils.cls_finder import ClsFinder
 from writers.image import ImageWriterFactory
@@ -404,7 +404,7 @@ class TestImageDataModule(TestCase):
         standarize1 = ImageStand(raster=image)
         standarized = standarize1.standarize_image(StandardScaler())
         raster_data = RasterData(standarized, label)
-        unet_images = raster_data.prepare_unet_images(image_size=(64, 64))
+        unet_images = raster_data.prepare_unet_data(image_size=[64, 64])
 
         callbacks = [
             EarlyStopping(patience=100, verbose=1),
