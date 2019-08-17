@@ -17,7 +17,7 @@ def image_meet_pixel_criteria_based_on_threshold(label_image: Raster, image_size
     number_of_pixels = reduce((lambda x, y: x * y), image_size)
 
     uniques, counts = np.unique(label_image, return_counts=True)
-    minimum_counts = min(np.unique(label_image, return_counts=True)[1].tolist())
+    minimum_counts = min(counts.tolist())
     percent_of_minimum = float(minimum_counts) / float(number_of_pixels) * 100.0
     unique_values = uniques.tolist().__len__()
 
@@ -40,30 +40,42 @@ def check_parameters(image: Raster, size: int) -> bool:
     return check_image_type(image) and check_size(size)
 
 
-def split_images_to_cnn(image: Raster, window_size: int) -> Tuple[List[Raster], int]:
+def between_values(min_value: float, max_value: float, value) -> bool:
+    return min_value < value < max_value
+
+
+def split_images_to_cnn(image: Raster, label: Raster, window_size: int) -> Tuple[List[Raster], List[int]]:
     """TODO create generator"""
     check_parameters(image=image, size=window_size)
     image_size_x, image_size_y = image.shape[:2]
     dx = int(window_size/2)
     staring_index_x, ending_index_x = dx, image_size_x - dx-1
     staring_index_y, ending_index_y = dx, image_size_y - dx-1
+
     if ending_index_x < staring_index_x or ending_index_y < staring_index_y:
         raise SizeException("Window shape is to huge")
+
+    non_zero_label = np.where(label != 0)
+    indexes = list(zip(non_zero_label[0], non_zero_label[1]))
+    indexes_based_on_window = [index for index in indexes
+                               if between_values(staring_index_x, ending_index_x, index[0])
+                               and between_values(staring_index_x, ending_index_x, index[1])]
 
     pixel_size_x = image.pixel.x
     pixel_size_y = image.pixel.y
     extent_shape_y = image.extent.dy
-    data = []
+    x_data = []
+    y_data = []
     left_up = image.extent.left_down.translate(0, extent_shape_y)
 
-    for y in range(staring_index_y, ending_index_y + 1):
-        for x in range(staring_index_x, ending_index_x + 1):
+    for y, x in indexes_based_on_window:
+        if label[x, y, 0] != 0:
             current_extent = Extent.from_coordinates(
                 coordinates=[
-                    left_up.x + (x * pixel_size_x),
-                    left_up.y - ((y+1) * abs(pixel_size_y)),
-                    left_up.x + ((x+1) * pixel_size_x),
-                    left_up.y - (y * abs(pixel_size_y)),
+                    left_up.x + (float(x) * pixel_size_x),
+                    left_up.y - ((float(y)+1) * abs(pixel_size_y)),
+                    left_up.x + ((float(x)+1) * pixel_size_x),
+                    left_up.y - (float(y) * abs(pixel_size_y)),
 
                 ],
                 crs=image.crs
@@ -73,9 +85,11 @@ def split_images_to_cnn(image: Raster, window_size: int) -> Tuple[List[Raster], 
                 extent=current_extent,
                 pixel=image.pixel
             )
-            data.append(raster)
 
-    return data, data.__len__()
+            x_data.append(raster)
+            y_data.append(label[x, y, 0])
+
+    return x_data, y_data
 
 
 @attr.s
@@ -184,6 +198,6 @@ class CnnDataCreator(DataCreator):
     def prepare(self, window_size: int) -> Tuple[List[Raster], List[int]]:
         # labels = split_images_to_cnn(self.label, window_size)
         # labels = self.label.reshape(self.label.shape[0]*self.label.shape[1])
-        images, labels = split_images_to_cnn(self.image, window_size)
+        images, labels = split_images_to_cnn(self.image, self.label, window_size)
 
-        return images, [el for el in range(labels)]
+        return images, labels
